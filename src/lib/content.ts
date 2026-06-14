@@ -14,3 +14,8 @@ export async function getTeaching() {
   const all = (await getCollection('teaching')).filter((e) => !isDatePrefixed(e.id));
   return all.find((e) => e.id === 'plan') ?? all[0];
 }
+
+export async function getSynergy() {
+  const all = (await getCollection('synergy')).filter((e) => !isDatePrefixed(e.id));
+  return all.find((e) => e.id === 'links') ?? all[0];
+}

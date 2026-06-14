@@ -2,7 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import StatusBadge from '../../components/StatusBadge.astro';
 import Timeline from '../../components/Timeline.astro';
-import { getProjects } from '../../lib/content';
+import { getProjects, getSynergy } from '../../lib/content';
 import { fmtRange, fmtDate, dday, fmtDday, parseDate, today } from '../../lib/dates';
 
 export async function getStaticPaths() {
@@ -13,6 +13,12 @@ export async function getStaticPaths() {
 const { entry } = Astro.props;
 const p = entry.data;
 const base = import.meta.env.BASE_URL;
+
+// 연계 과제
+const allProjects = await getProjects();
+const pmeta = (slug: string) => allProjects.find((x) => x.id === slug)?.data;
+const syn = await getSynergy();
+const synLinks = ((syn?.data?.links ?? []) as any[]).filter((l) => l.a === entry.id || l.b === entry.id);
 
 const row = {
   slug: entry.id, title: p.title, color: p.color,
@@ -187,6 +193,40 @@ const typeColor: Record<string, string> = {
       </div>
     </section>
   </div>
+
+  <!-- 연계 과제 -->
+  {synLinks.length > 0 && (
+    <section class="mt-7">
+      <div class="mb-3 flex items-center justify-between">
+        <h2 class="text-sm font-bold uppercase tracking-wide text-slate-500">연계 과제 · 성과 공유</h2>
+        <a href={`${base}synergy`} class="text-xs font-medium text-slate-400 hover:text-slate-700">연계 맵 전체보기 →</a>
+      </div>
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {synLinks.map((l) => {
+          const partner = l.a === entry.id ? l.b : l.a;
+          const pm = pmeta(partner);
+          const gives = l.shared.filter((s: any) => s.from === entry.id);
+          const gets = l.shared.filter((s: any) => s.to === entry.id);
+          return (
+            <a href={`${base}synergy`} class="block rounded-2xl border border-[var(--line)] bg-white p-4 transition hover:shadow-md">
+              <div class="flex items-center gap-2">
+                <span class="h-2.5 w-2.5 shrink-0 rounded-full" style={`background:${pm?.color ?? '#64748b'}`}></span>
+                <span class="min-w-0 truncate text-sm font-bold text-slate-800">{pm?.title ?? partner}</span>
+                <span class={`ml-auto shrink-0 rounded-md px-1.5 py-0.5 text-[0.62rem] font-bold ${l.strength === '강' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{l.strength === '강' ? '강한 연계' : '추가'}</span>
+              </div>
+              <p class="mt-1.5 text-sm font-medium text-slate-600">{l.theme}</p>
+              {gives.length > 0 && (
+                <p class="mt-2 text-xs leading-relaxed text-[var(--muted)]"><span class="font-semibold text-emerald-600">제공 →</span> {gives.map((s: any) => s.asset).join(' · ')}</p>
+              )}
+              {gets.length > 0 && (
+                <p class="mt-1 text-xs leading-relaxed text-[var(--muted)]"><span class="font-semibold text-indigo-600">활용 ←</span> {gets.map((s: any) => s.asset).join(' · ')}</p>
+              )}
+            </a>
+          );
+        })}
+      </div>
+    </section>
+  )}
 
   <!-- 아카이브 -->
   <div class="mt-8 flex items-center justify-between rounded-2xl border border-dashed border-[var(--line)] bg-white px-5 py-4">
