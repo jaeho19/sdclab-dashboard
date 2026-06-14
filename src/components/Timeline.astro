@@ -2,9 +2,11 @@
 import { parseDate, parseDateEnd, pct, today, fmtDate } from '../lib/dates';
 
 interface EventItem { date: string; label: string; type: string; status: string; }
+interface YearPhase { label: string; start: string; end: string; }
 interface ProjectRow {
   slug: string; title: string; color: string;
   period_start: string; period_end: string; events: EventItem[];
+  years?: YearPhase[];
 }
 interface Props { projects: ProjectRow[]; }
 const { projects } = Astro.props;
@@ -82,11 +84,27 @@ const dotFill: Record<string, string> = { '완료': '#94a3b8', '진행': '#f59e0
             {todayInRange && (
               <div class="absolute top-0 bottom-0 z-10 w-px bg-rose-400/70" style={`left:${todayLeft}px`}></div>
             )}
-            <!-- 기간 막대 -->
-            <div
-              class="absolute top-1/2 -translate-y-1/2 rounded-full opacity-90"
-              style={`left:${x0}px;width:${Math.max(6, x1 - x0)}px;height:14px;background:${p.color};opacity:.22`}
-            ></div>
+            <!-- 기간 막대 / 연차 -->
+            {p.years && p.years.length > 0 ? (
+              p.years.map((yr) => {
+                const a = leftPx(parseDate(yr.start));
+                const b = leftPx(parseDateEnd(yr.end));
+                const w = Math.max(6, b - a);
+                return (
+                  <Fragment>
+                    <div class="absolute top-1/2 -translate-y-1/2 rounded-md" style={`left:${a}px;width:${w}px;height:16px;background:${p.color};opacity:.18`}></div>
+                    {w > 40 && (
+                      <span class="absolute top-1/2 z-[5] -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-[0.6rem] font-bold" style={`left:${a + w / 2}px;color:${p.color}`}>{yr.label}</span>
+                    )}
+                  </Fragment>
+                );
+              })
+            ) : (
+              <div
+                class="absolute top-1/2 -translate-y-1/2 rounded-full"
+                style={`left:${x0}px;width:${Math.max(6, x1 - x0)}px;height:14px;background:${p.color};opacity:.22`}
+              ></div>
+            )}
             <!-- 이벤트 점 -->
             {p.events.map((e) => (
               <div

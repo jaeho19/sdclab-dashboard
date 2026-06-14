@@ -32,6 +32,17 @@ const projects = defineCollection({
     pi: z.string().optional(),                // 연구책임자
     team: z.array(z.string()).default([]),    // 참여진
     summary: z.string().optional(),           // 카드/메타 한 줄 요약
+    purpose: z.string().optional(),           // 우리 팀의 목적/목표
+    current_stage: z.string().optional(),     // 현재 진행 단계
+    years: z
+      .array(z.object({ label: z.string(), start: flexDate, end: flexDate }))
+      .default([]),                           // 연차 구분 (다년차 과제)
+    meetings: z
+      .array(z.object({ date: flexDate, title: z.string(), summary: z.string().optional() }))
+      .default([]),                           // 회의 기록 (최신 = 최근 회의)
+    next_tasks: z
+      .array(z.object({ task: z.string(), due: flexDate.optional(), done: z.boolean().default(false) }))
+      .default([]),                           // 향후 주요 과제
     events: z
       .array(
         z.object({

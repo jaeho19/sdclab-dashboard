@@ -1,37 +1,29 @@
 ---
-import { getCollection } from 'astro:content';
 import Base from '../layouts/Base.astro';
 import ProjectCard from '../components/ProjectCard.astro';
 import Timeline from '../components/Timeline.astro';
-import UpcomingDeadlines from '../components/UpcomingDeadlines.astro';
+import { getProjects } from '../lib/content';
 
-const entries = (await getCollection('projects')).sort((a, b) => a.data.order - b.data.order);
+const entries = await getProjects();
 const projects = entries.map((e) => ({ slug: e.id, ...e.data }));
 
-// 타임라인/카드용
 const rows = projects.map((p) => ({
   slug: p.slug, title: p.title, color: p.color,
-  period_start: p.period_start, period_end: p.period_end, events: p.events,
+  period_start: p.period_start, period_end: p.period_end, events: p.events, years: p.years,
 }));
 
-// 임박 일정용: 전 과제 이벤트 평탄화
-const flat = projects.flatMap((p) =>
-  p.events.map((e) => ({ ...e, project: p.title, slug: p.slug, color: p.color })),
-);
-
-const activeCount = projects.filter((p) => p.status === '진행중' || p.status === '초기' || p.status === '마무리').length;
+const activeCount = projects.filter((p) => p.status !== '완료').length;
 const avgProgress = projects.length
   ? Math.round(projects.reduce((s, p) => s + p.progress, 0) / projects.length)
   : 0;
 ---
 <Base title="연구과제 종합 대시보드 · SDC Lab">
-  <!-- Hero -->
   <section class="mb-7">
     <h1 class="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-[1.7rem]">
-      2026 연구과제 현황 한눈에 보기
+      연구과제 현황 한눈에 보기
     </h1>
     <p class="mt-1.5 text-sm text-[var(--muted)]">
-      진행 중인 {projects.length}개 과제의 회의 내용 · 진행상황 · 향후 일정을 한 페이지에서 관리합니다.
+      진행 중인 {projects.length}개 과제의 현재 진행 상황과 향후 일정. 과제 카드를 누르면 상세 현황으로 이동합니다.
     </p>
     <div class="mt-4 flex flex-wrap gap-3">
       <div class="rounded-xl border border-[var(--line)] bg-white px-4 py-2.5">
@@ -55,17 +47,11 @@ const avgProgress = projects.length
     <Timeline projects={rows} />
   </section>
 
-  <!-- 과제 카드 + 임박 일정 -->
-  <section class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-    <div class="lg:col-span-2">
-      <h2 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">과제별 현황</h2>
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {projects.map((p) => <ProjectCard {...p} />)}
-      </div>
-    </div>
-    <div>
-      <h2 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">임박 일정</h2>
-      <UpcomingDeadlines events={flat} limit={9} />
+  <!-- 과제별 현황 -->
+  <section>
+    <h2 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">과제별 현황</h2>
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      {projects.map((p) => <ProjectCard {...p} />)}
     </div>
   </section>
 </Base>

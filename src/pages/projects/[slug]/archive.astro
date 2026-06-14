@@ -1,0 +1,91 @@
+---
+import Base from '../../../layouts/Base.astro';
+import { getProjects } from '../../../lib/content';
+import { render } from 'astro:content';
+import { fmtDate, parseDate } from '../../../lib/dates';
+
+export async function getStaticPaths() {
+  const entries = await getProjects();
+  return entries.map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+}
+
+const { entry } = Astro.props;
+const p = entry.data;
+const base = import.meta.env.BASE_URL;
+const { Content } = await render(entry);
+
+const meetings = [...(p.meetings ?? [])].sort((a, b) => parseDate(b.date).getTime() - parseDate(a.date).getTime());
+const events = [...p.events].sort((a, b) => parseDate(a.date).getTime() - parseDate(b.date).getTime());
+
+const typeBadge: Record<string, string> = {
+  '마감': 'bg-rose-100 text-rose-700', '제출': 'bg-rose-100 text-rose-700',
+  '보고': 'bg-amber-100 text-amber-700', '회의': 'bg-sky-100 text-sky-700',
+  '마일스톤': 'bg-slate-100 text-slate-600',
+};
+const stBadge: Record<string, string> = {
+  '완료': 'bg-slate-200 text-slate-600', '진행': 'bg-amber-100 text-amber-700', '예정': 'bg-white text-slate-500 ring-1 ring-slate-200',
+};
+---
+<Base title={`${p.title} · 아카이브 · SDC Lab`} description={`${p.title} 회의 기록과 전체 일정`}>
+  <a href={`${base}projects/${entry.id}`} class="mb-4 inline-flex items-center gap-1 text-sm text-[var(--muted)] hover:text-slate-900">← {p.title} 현황</a>
+
+  <div class="mb-6">
+    <h1 class="text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">아카이브 · {p.title}</h1>
+    <p class="mt-1 text-sm text-[var(--muted)]">지금까지의 회의 기록과 전체 일정 (히스토리)</p>
+  </div>
+
+  <!-- 회의 기록 -->
+  <section class="mb-8">
+    <h2 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">회의 기록 ({meetings.length}건)</h2>
+    {meetings.length > 0 ? (
+      <ol class="relative space-y-4 border-l-2 border-slate-100 pl-6">
+        {meetings.map((m) => (
+          <li class="relative">
+            <span class="absolute -left-[1.72rem] top-1.5 h-3 w-3 rounded-full border-2 border-white" style={`background:${p.color}`}></span>
+            <div class="rounded-xl border border-[var(--line)] bg-white p-4">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-sm font-bold text-slate-800">{m.title}</span>
+                <span class="text-xs font-medium text-[var(--muted)]">{fmtDate(m.date)}</span>
+              </div>
+              {m.summary && <p class="mt-1.5 text-sm leading-relaxed text-slate-600">{m.summary}</p>}
+            </div>
+          </li>
+        ))}
+      </ol>
+    ) : (
+      <p class="text-sm text-[var(--muted)]">기록된 회의가 없습니다.</p>
+    )}
+  </section>
+
+  <!-- 전체 일정표 -->
+  <section class="mb-8">
+    <h2 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">전체 일정표</h2>
+    <div class="overflow-hidden rounded-2xl border border-[var(--line)] bg-white">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-[var(--line)] bg-slate-50 text-left text-xs text-slate-500">
+            <th class="px-4 py-2.5 font-semibold">날짜</th>
+            <th class="px-4 py-2.5 font-semibold">항목</th>
+            <th class="px-4 py-2.5 font-semibold">유형</th>
+            <th class="px-4 py-2.5 font-semibold">상태</th>
+          </tr>
+        </thead>
+        <tbody>
+          {events.map((e) => (
+            <tr class="border-b border-[var(--line)] last:border-0">
+              <td class="whitespace-nowrap px-4 py-2.5 font-medium text-slate-600">{fmtDate(e.date)}</td>
+              <td class="px-4 py-2.5 text-slate-700">{e.label}</td>
+              <td class="px-4 py-2.5"><span class={`rounded-md px-2 py-0.5 text-xs font-medium ${typeBadge[e.type] ?? 'bg-slate-100 text-slate-600'}`}>{e.type}</span></td>
+              <td class="px-4 py-2.5"><span class={`rounded-md px-2 py-0.5 text-xs font-medium ${stBadge[e.status] ?? ''}`}>{e.status}</span></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 상세 내역 (본문) -->
+  <article class="prose max-w-none rounded-2xl border border-[var(--line)] bg-white p-6">
+    <Content />
+  </article>
+</Base>

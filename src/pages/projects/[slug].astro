@@ -1,42 +1,45 @@
 ---
-import { getCollection, render } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import StatusBadge from '../../components/StatusBadge.astro';
 import Timeline from '../../components/Timeline.astro';
+import { getProjects } from '../../lib/content';
 import { fmtRange, fmtDate, dday, fmtDday, parseDate, today } from '../../lib/dates';
 
 export async function getStaticPaths() {
-  const entries = await getCollection('projects');
+  const entries = await getProjects();
   return entries.map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
 }
 
 const { entry } = Astro.props;
 const p = entry.data;
-const { Content } = await render(entry);
 const base = import.meta.env.BASE_URL;
 
 const row = {
   slug: entry.id, title: p.title, color: p.color,
-  period_start: p.period_start, period_end: p.period_end, events: p.events,
+  period_start: p.period_start, period_end: p.period_end, events: p.events, years: p.years,
 };
 
 const t = today().getTime();
-const sortedEvents = [...p.events].sort((a, b) => parseDate(a.date).getTime() - parseDate(b.date).getTime());
-const next = sortedEvents.find((e) => e.status !== '완료' && parseDate(e.date).getTime() >= t);
 
-const typeBadge: Record<string, string> = {
-  '마감': 'bg-rose-100 text-rose-700', '제출': 'bg-rose-100 text-rose-700',
-  '보고': 'bg-amber-100 text-amber-700', '회의': 'bg-sky-100 text-sky-700',
-  '마일스톤': 'bg-slate-100 text-slate-600',
-};
-const stBadge: Record<string, string> = {
-  '완료': 'bg-slate-200 text-slate-600', '진행': 'bg-amber-100 text-amber-700', '예정': 'bg-white text-slate-500 ring-1 ring-slate-200',
+// (a) 최근 회의
+const meetings = [...(p.meetings ?? [])].sort((a, b) => parseDate(b.date).getTime() - parseDate(a.date).getTime());
+const latest = meetings[0];
+const daysAgo = latest ? Math.round((t - parseDate(latest.date).getTime()) / 86400000) : null;
+
+// (d) 향후 주요 일정
+const upcoming = [...p.events]
+  .filter((e) => e.status !== '완료' && parseDate(e.date).getTime() >= t)
+  .sort((a, b) => parseDate(a.date).getTime() - parseDate(b.date).getTime());
+
+const typeColor: Record<string, string> = {
+  '마감': 'text-rose-600', '제출': 'text-rose-600', '보고': 'text-amber-600',
+  '회의': 'text-sky-600', '마일스톤': 'text-slate-500',
 };
 ---
 <Base title={`${p.title} · SDC Lab 대시보드`} description={p.summary ?? p.title}>
   <a href={base} class="mb-4 inline-flex items-center gap-1 text-sm text-[var(--muted)] hover:text-slate-900">← 전체 대시보드</a>
 
-  <!-- 헤더 -->
+  <!-- 과제 개요 -->
   <div class="rounded-2xl border border-[var(--line)] bg-white p-6">
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div class="min-w-0">
@@ -56,7 +59,6 @@ const stBadge: Record<string, string> = {
       {p.pi && <div><dt class="text-xs text-[var(--muted)]">연구책임자</dt><dd class="font-semibold text-slate-700">{p.pi}</dd></div>}
     </dl>
 
-    <!-- 진척바 -->
     <div class="mt-5">
       <div class="mb-1 flex items-center justify-between text-xs">
         <span class="font-medium text-slate-500">진척도</span>
@@ -67,12 +69,11 @@ const stBadge: Record<string, string> = {
       </div>
     </div>
 
-    {next && (
-      <div class="mt-4 inline-flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-sm">
-        <span class="text-xs font-semibold uppercase text-slate-400">다음</span>
-        <span class="font-medium text-slate-700">{next.label}</span>
-        <span class="text-xs text-[var(--muted)]">{fmtDate(next.date)}</span>
-        <span class="rounded-md bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-700">{fmtDday(dday(next.date))}</span>
+    {p.years && p.years.length > 0 && (
+      <div class="mt-4 flex flex-wrap gap-2 text-xs">
+        {p.years.map((yr) => (
+          <span class="rounded-lg bg-slate-50 px-2.5 py-1 font-medium text-slate-600">{yr.label} · {fmtRange(yr.start, yr.end)}</span>
+        ))}
       </div>
     )}
 
@@ -92,43 +93,107 @@ const stBadge: Record<string, string> = {
     )}
   </div>
 
-  <!-- 과제 타임라인 -->
+  <!-- 타임라인 -->
   <section class="mt-7">
-    <h2 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">과제 타임라인</h2>
+    <h2 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">타임라인</h2>
     <Timeline projects={[row]} />
   </section>
 
-  <!-- 본문: 회의 / 진행상황 / 할 일 -->
-  <article class="prose mt-8 max-w-none rounded-2xl border border-[var(--line)] bg-white p-6">
-    <Content />
-  </article>
+  <div class="mt-7 grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <!-- (a) 최근 회의 -->
+    <section class="lg:col-span-2">
+      <h2 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">최근 회의</h2>
+      {latest ? (
+        <div class="rounded-2xl border-l-4 bg-white p-5 shadow-sm" style={`border-color:${p.color}`}>
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-sm font-bold text-slate-800">{latest.title}</span>
+            <span class="text-xs font-medium text-[var(--muted)]">{fmtDate(latest.date)}{daysAgo !== null && daysAgo >= 0 ? ` · ${daysAgo === 0 ? '오늘' : daysAgo + '일 전'}` : ''}</span>
+          </div>
+          {latest.summary && <p class="mt-2 text-sm leading-relaxed text-slate-600">{latest.summary}</p>}
+          {meetings.length > 1 && (
+            <a href={`${base}projects/${entry.id}/archive`} class="mt-3 inline-block text-xs font-medium text-slate-400 hover:text-slate-700">이전 회의 {meetings.length - 1}건 보기 →</a>
+          )}
+        </div>
+      ) : (
+        <p class="text-sm text-[var(--muted)]">기록된 회의가 없습니다.</p>
+      )}
+    </section>
 
-  <!-- 일정 표 -->
-  {sortedEvents.length > 0 && (
-    <section class="mt-7">
-      <h2 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">전체 일정표</h2>
-      <div class="overflow-hidden rounded-2xl border border-[var(--line)] bg-white">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="border-b border-[var(--line)] bg-slate-50 text-left text-xs text-slate-500">
-              <th class="px-4 py-2.5 font-semibold">날짜</th>
-              <th class="px-4 py-2.5 font-semibold">항목</th>
-              <th class="px-4 py-2.5 font-semibold">유형</th>
-              <th class="px-4 py-2.5 font-semibold">상태</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedEvents.map((e) => (
-              <tr class="border-b border-[var(--line)] last:border-0">
-                <td class="whitespace-nowrap px-4 py-2.5 font-medium text-slate-600">{fmtDate(e.date)}</td>
-                <td class="px-4 py-2.5 text-slate-700">{e.label}</td>
-                <td class="px-4 py-2.5"><span class={`rounded-md px-2 py-0.5 text-xs font-medium ${typeBadge[e.type] ?? 'bg-slate-100 text-slate-600'}`}>{e.type}</span></td>
-                <td class="px-4 py-2.5"><span class={`rounded-md px-2 py-0.5 text-xs font-medium ${stBadge[e.status] ?? ''}`}>{e.status}</span></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <!-- (b) 향후 주요 과제 -->
+    <section>
+      <h2 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">향후 주요 과제</h2>
+      <div class="rounded-2xl border border-[var(--line)] bg-white p-5">
+        {p.next_tasks && p.next_tasks.length > 0 ? (
+          <ul class="space-y-2.5">
+            {p.next_tasks.map((nt) => {
+              const d = nt.due ? dday(nt.due) : null;
+              return (
+                <li class="flex items-start gap-2.5">
+                  <span class={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${nt.done ? 'bg-slate-300' : ''}`} style={nt.done ? '' : `background:${p.color}`}></span>
+                  <span class="min-w-0 flex-1">
+                    <span class={`text-sm ${nt.done ? 'text-slate-400 line-through' : 'font-medium text-slate-700'}`}>{nt.task}</span>
+                    {nt.due && <span class="ml-2 whitespace-nowrap text-xs text-[var(--muted)]">{fmtDate(nt.due)}{d !== null && d >= 0 ? ` (${fmtDday(d)})` : ''}</span>}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p class="text-sm text-[var(--muted)]">등록된 과제가 없습니다.</p>
+        )}
       </div>
     </section>
-  )}
+
+    <!-- (c) 현재 진행 단계 & 팀 목적 -->
+    <section>
+      <h2 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">현재 진행 단계 · 팀 목적</h2>
+      <div class="space-y-3">
+        <div class="rounded-2xl border border-[var(--line)] bg-white p-5">
+          <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">현재 단계</p>
+          <p class="text-sm leading-relaxed text-slate-700">{p.current_stage ?? '—'}</p>
+        </div>
+        {p.purpose && (
+          <div class="rounded-2xl bg-slate-900 p-5 text-white">
+            <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">우리 팀의 목적</p>
+            <p class="text-sm leading-relaxed">{p.purpose}</p>
+          </div>
+        )}
+      </div>
+    </section>
+
+    <!-- (d) 향후 주요 일정 -->
+    <section class="lg:col-span-2">
+      <h2 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">향후 주요 일정 (D-day)</h2>
+      <div class="rounded-2xl border border-[var(--line)] bg-white p-2">
+        {upcoming.length > 0 ? (
+          <ul class="divide-y divide-[var(--line)]">
+            {upcoming.map((e) => {
+              const d = dday(e.date);
+              return (
+                <li class="flex items-center gap-3 px-3 py-2.5">
+                  <span class="w-16 shrink-0 text-right text-xs font-medium text-[var(--muted)]">{fmtDate(e.date)}</span>
+                  <span class="h-2 w-2 shrink-0 rounded-full" style={`background:${p.color}`}></span>
+                  <span class="min-w-0 flex-1 text-sm font-medium text-slate-700">{e.label}
+                    <span class={`ml-2 text-xs ${typeColor[e.type] ?? 'text-slate-500'}`}>{e.type}</span>
+                  </span>
+                  <span class={`shrink-0 rounded-lg px-2 py-1 text-xs font-bold ${d <= 14 ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'}`}>{fmtDday(d)}</span>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p class="px-3 py-4 text-sm text-[var(--muted)]">예정된 일정이 없습니다.</p>
+        )}
+      </div>
+    </section>
+  </div>
+
+  <!-- 아카이브 -->
+  <div class="mt-8 flex items-center justify-between rounded-2xl border border-dashed border-[var(--line)] bg-white px-5 py-4">
+    <div>
+      <p class="text-sm font-semibold text-slate-700">회의 히스토리 · 전체 일정표</p>
+      <p class="text-xs text-[var(--muted)]">지금까지의 회의 기록과 전체 일정은 아카이브에서 봅니다.</p>
+    </div>
+    <a href={`${base}projects/${entry.id}/archive`} class="shrink-0 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">아카이브 →</a>
+  </div>
 </Base>
