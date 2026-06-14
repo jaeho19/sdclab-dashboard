@@ -1,0 +1,142 @@
+---
+import { getCollection, render } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import StatusBadge from '../components/StatusBadge.astro';
+import { dday, fmtDday, fmtDate } from '../lib/dates';
+
+const entries = await getCollection('teaching');
+const entry = entries[0];
+const t = entry?.data;
+const Content = entry ? (await render(entry)).Content : null;
+
+const levelStyle: Record<string, { dot: string; chip: string }> = {
+  '학부': { dot: '#2563eb', chip: 'bg-blue-50 text-blue-700 ring-blue-100' },
+  '대학원': { dot: '#7c3aed', chip: 'bg-violet-50 text-violet-700 ring-violet-100' },
+  '도시과학대학원': { dot: '#0d9488', chip: 'bg-teal-50 text-teal-700 ring-teal-100' },
+  '도시설계정책학과': { dot: '#d97706', chip: 'bg-amber-50 text-amber-700 ring-amber-100' },
+};
+const tagStyle: Record<string, string> = {
+  '신설': 'bg-emerald-100 text-emerald-700',
+  '폐지': 'bg-rose-100 text-rose-700',
+  '미정': 'bg-slate-200 text-slate-600',
+  '잠정': 'bg-slate-100 text-slate-500',
+};
+const devTypeStyle: Record<string, string> = {
+  '폐지': 'bg-rose-100 text-rose-700',
+  '개발': 'bg-indigo-100 text-indigo-700',
+  '심의': 'bg-amber-100 text-amber-700',
+  '개설': 'bg-emerald-100 text-emerald-700',
+};
+
+const semesters = t?.semesters ?? [];
+const byYear: Record<string, typeof semesters> = {};
+for (const s of semesters) {
+  const y = s.term.split('-')[0];
+  (byYear[y] ||= []).push(s);
+}
+const years = Object.keys(byYear).sort();
+const levels = ['학부', '대학원', '도시과학대학원', '도시설계정책학과'];
+
+const development = t?.development ?? [];
+const dateRe = /^\d{4}(-\d{2})?(-\d{2})?$/;
+const ddayOf = (target: string) => (dateRe.test(target) ? dday(target) : null);
+---
+<Base title="강의 · 교과목 연차 계획 · SDC Lab" description="연차별 강의 교과목 현황과 신설·개발 계획">
+  {!t ? (
+    <p class="text-sm text-[var(--muted)]">강의 계획 데이터가 아직 없습니다.</p>
+  ) : (
+    <>
+      <section class="mb-6">
+        <h1 class="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-[1.7rem]">강의 · 교과목 연차 계획</h1>
+        <p class="mt-1.5 text-sm text-[var(--muted)]">연차별 강의 교과목 현황과 신설·개발 로드맵을 한눈에 봅니다.</p>
+        <!-- 범례 -->
+        <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-[var(--muted)]">
+          {levels.map((lv) => (
+            <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full" style={`background:${levelStyle[lv].dot}`}></span>{lv}</span>
+          ))}
+          <span class="ml-2 flex items-center gap-1.5"><span class="rounded border border-dashed border-slate-300 px-1 text-[0.65rem]">점선</span>잠정·미확정</span>
+        </div>
+      </section>
+
+      <!-- 학기별 교과목 -->
+      {years.map((y) => (
+        <section class="mb-7">
+          <h2 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">{y}학년도</h2>
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {byYear[y].map((s) => (
+              <div class={`rounded-2xl border bg-white p-5 ${s.status === '안식년' ? 'border-dashed border-slate-300' : 'border-[var(--line)]'}`}>
+                <div class="mb-3 flex items-center justify-between">
+                  <h3 class="text-[1.02rem] font-bold tracking-tight">{s.label}</h3>
+                  <StatusBadge status={s.status} />
+                </div>
+                {s.status === '안식년' || s.courses.length === 0 ? (
+                  <div class="rounded-xl bg-slate-50 px-4 py-6 text-center">
+                    <p class="text-sm font-medium text-slate-500">{s.note ?? '수업 없음'}</p>
+                  </div>
+                ) : (
+                  <div class="space-y-3">
+                    {levels.filter((lv) => s.courses.some((c) => c.level === lv)).map((lv) => (
+                      <div>
+                        <div class="mb-1.5 flex items-center gap-1.5">
+                          <span class="h-2 w-2 rounded-full" style={`background:${levelStyle[lv].dot}`}></span>
+                          <span class="text-[0.7rem] font-semibold uppercase tracking-wide text-slate-400">{lv}</span>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5">
+                          {s.courses.filter((c) => c.level === lv).map((c) => (
+                            <span class={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-sm font-medium ring-1 ring-inset ${levelStyle[lv].chip} ${c.confirmed === false ? 'border border-dashed border-slate-300 opacity-80' : ''}`}>
+                              {c.name}
+                              {c.tag && <span class={`rounded px-1 py-0.5 text-[0.62rem] font-bold ${tagStyle[c.tag] ?? 'bg-slate-100 text-slate-500'}`}>{c.tag}</span>}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    {s.note && <p class="pt-1 text-xs text-[var(--muted)]">※ {s.note}</p>}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
+
+      <!-- 교과목 개발·신설 로드맵 -->
+      {development.length > 0 && (
+        <section class="mb-7">
+          <h2 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">교과목 개발 · 신설 로드맵</h2>
+          <div class="rounded-2xl border border-[var(--line)] bg-white p-5">
+            <ol class="relative space-y-5 border-l-2 border-slate-100 pl-6">
+              {development.map((d) => {
+                const dd = ddayOf(d.target);
+                return (
+                  <li class="relative">
+                    <span class="absolute -left-[1.72rem] top-1 h-3 w-3 rounded-full border-2 border-white" style={`background:${d.status === '완료' ? '#94a3b8' : d.type === '개설' ? '#10b981' : '#6366f1'}`}></span>
+                    <div class="flex flex-wrap items-center gap-2">
+                      <span class={`rounded-md px-2 py-0.5 text-xs font-bold ${devTypeStyle[d.type] ?? 'bg-slate-100 text-slate-600'}`}>{d.type}</span>
+                      <span class="text-sm font-semibold text-slate-800">{d.item}</span>
+                      <span class="text-xs font-medium text-[var(--muted)]">{dateRe.test(d.target) ? fmtDate(d.target) : d.target}</span>
+                      {dd !== null && dd >= 0 && <span class="rounded bg-slate-100 px-1.5 py-0.5 text-[0.68rem] font-bold text-slate-600">{fmtDday(dd)}</span>}
+                    </div>
+                    {d.note && <p class="mt-1 text-xs text-[var(--muted)]">{d.note}</p>}
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+        </section>
+      )}
+
+      {Content && (
+        <article class="prose mt-4 max-w-none rounded-2xl border border-[var(--line)] bg-white p-6">
+          <Content />
+        </article>
+      )}
+
+      {t.grounding_notes && (
+        <p class="mt-6 rounded-xl bg-slate-50 px-4 py-3 text-xs leading-relaxed text-[var(--muted)]">
+          <span class="font-semibold text-slate-500">자료 출처·가정:</span> {t.grounding_notes}
+        </p>
+      )}
+    </>
+  )}
+</Base>

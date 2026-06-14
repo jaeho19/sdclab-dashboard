@@ -10,6 +10,7 @@ const flexDate = z.preprocess((v) => {
     const d = String(v.getUTCDate()).padStart(2, '0');
     return `${y}-${m}-${d}`;
   }
+  if (typeof v === 'number') return String(v); // 'target: 2026' 처럼 연도만 쓴 경우
   return v;
 }, z.string());
 
@@ -44,4 +45,42 @@ const projects = defineCollection({
   }),
 });
 
-export const collections = { projects };
+// ── 강의 · 교과목 연차 계획 ─────────────────────────
+const course = z.object({
+  name: z.string(),
+  level: z.enum(['학부', '대학원', '도시과학대학원', '도시설계정책학과']),
+  tag: z.string().optional(),          // 신설 / 미정 / 폐지 / 잠정 등
+  confirmed: z.boolean().default(true),
+});
+
+const teaching = defineCollection({
+  loader: glob({ pattern: '*.md', base: './content/teaching' }),
+  schema: z.object({
+    title: z.string().default('강의 · 교과목 연차 계획'),
+    semesters: z
+      .array(
+        z.object({
+          term: z.string(),            // '2026-1'
+          label: z.string(),           // '2026학년도 1학기'
+          status: z.enum(['완료', '진행', '예정', '안식년']),
+          note: z.string().optional(),
+          courses: z.array(course).default([]),
+        }),
+      )
+      .default([]),
+    development: z
+      .array(
+        z.object({
+          item: z.string(),
+          type: z.string(),            // 폐지 / 개발 / 심의 / 개설
+          target: flexDate,           // '2026-09' 등 (완전한 날짜를 써도 문자열로 처리)
+          status: z.string(),
+          note: z.string().optional(),
+        }),
+      )
+      .default([]),
+    grounding_notes: z.string().optional(),
+  }),
+});
+
+export const collections = { projects, teaching };
