@@ -1,0 +1,24 @@
+# build output
+dist/
+.astro/
+
+# dependencies
+node_modules/
+
+# logs
+npm-debug.log*
+*.log
+
+# environment
+.env
+.env.production
+
+# os / editor
+.DS_Store
+Thumbs.db
+
+# obsidian (이 폴더가 볼트 안에 있을 때 obsidian 작업파일 무시)
+.obsidian/
+
+# OMC 세션 상태 (자동 생성)
+.omc/
