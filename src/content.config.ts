@@ -41,7 +41,15 @@ const projects = defineCollection({
       .array(z.object({ label: z.string(), start: flexDate, end: flexDate }))
       .default([]),                           // 연차 구분 (다년차 과제)
     meetings: z
-      .array(z.object({ date: flexDate, title: z.string(), summary: z.string().optional() }))
+      .array(
+        z.object({
+          date: flexDate,
+          title: z.string(),
+          summary: z.string().optional(),
+          decisions: z.array(z.string()).default([]), // 결정 사항(개조식)
+          next: z.array(z.string()).default([]),      // 다음 회의·진행 업무
+        }),
+      )
       .default([]),                           // 회의 기록 (최신 = 최근 회의)
     next_tasks: z
       .array(z.object({ task: z.string(), due: flexDate.optional(), done: z.boolean().default(false) }))
