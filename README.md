@@ -1,6 +1,9 @@
 # SDC Lab 연구과제 종합 대시보드
 
-🔗 **배포 주소:** https://jaeho19.github.io/sdclab-dashboard/
+🔗 **배포 주소 (Netlify, 기본):** https://sdclab-dashboard-156.netlify.app
+🔗 **미러 (GitHub Pages):** https://jaeho19.github.io/sdclab-dashboard/
+
+> ⚠️ 참고: Netlify 계정의 `sdclab-dashboard.netlify.app`(저장소 `sdc-lab-dashboard2`)는 **별개의 Next.js 회원/로그인 앱**으로, 이 연구 대시보드와 무관합니다.
 
 진행 중인 연구과제의 **회의 내용 · 진행상황 · 향후 일정**을 한 페이지에서 보고 관리하는 정적 대시보드.
 
