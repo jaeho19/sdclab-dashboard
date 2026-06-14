@@ -1,0 +1,120 @@
+---
+import { parseDate, parseDateEnd, pct, today, fmtDate } from '../lib/dates';
+
+interface EventItem { date: string; label: string; type: string; status: string; }
+interface ProjectRow {
+  slug: string; title: string; color: string;
+  period_start: string; period_end: string; events: EventItem[];
+}
+interface Props { projects: ProjectRow[]; }
+const { projects } = Astro.props;
+const base = import.meta.env.BASE_URL;
+
+// ── 전체 구간 계산 ───────────────────────────────
+let minD = Infinity, maxD = -Infinity;
+for (const p of projects) {
+  minD = Math.min(minD, parseDate(p.period_start).getTime());
+  maxD = Math.max(maxD, parseDateEnd(p.period_end).getTime());
+  for (const e of p.events) {
+    const t = parseDate(e.date).getTime();
+    minD = Math.min(minD, t); maxD = Math.max(maxD, t);
+  }
+}
+let min = new Date(minD), max = new Date(maxD);
+min = new Date(min.getFullYear(), Math.floor(min.getMonth() / 3) * 3, 1);   // 분기 시작
+max = new Date(max.getFullYear(), Math.floor(max.getMonth() / 3) * 3 + 3, 0); // 분기 끝
+
+const months: Date[] = [];
+let cur = new Date(min);
+while (cur <= max) { months.push(new Date(cur)); cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1); }
+
+const PX = 38;                         // 월당 픽셀
+const trackW = months.length * PX;
+const LABEL_W = 156;
+const leftPx = (d: Date) => (pct(d, min, max) / 100) * trackW;
+const todayLeft = leftPx(today());
+const todayInRange = today() >= min && today() <= max;
+
+const dotFill: Record<string, string> = { '완료': '#94a3b8', '진행': '#f59e0b', '예정': '#ffffff' };
+---
+<div class="overflow-x-auto no-scrollbar rounded-2xl border border-[var(--line)] bg-white">
+  <div style={`min-width:${LABEL_W + trackW}px`}>
+
+    <!-- 연/분기 눈금 헤더 -->
+    <div class="flex items-end">
+      <div class="shrink-0" style={`width:${LABEL_W}px`}></div>
+      <div class="relative" style={`width:${trackW}px;height:34px`}>
+        {months.map((m) => {
+          const isYear = m.getMonth() === 0;
+          const isQ = m.getMonth() % 3 === 0;
+          if (!isQ) return null;
+          return (
+            <div class="absolute bottom-0" style={`left:${leftPx(m)}px`}>
+              <div class={`h-3 w-px ${isYear ? 'bg-slate-300' : 'bg-slate-200'}`}></div>
+              <span class={`absolute bottom-3.5 left-1 whitespace-nowrap text-[0.68rem] ${isYear ? 'font-bold text-slate-600' : 'text-slate-400'}`}>
+                {isYear ? `${m.getFullYear()}` : `Q${Math.floor(m.getMonth() / 3) + 1}`}
+              </span>
+            </div>
+          );
+        })}
+        {todayInRange && (
+          <span class="absolute -top-0.5 z-10 -translate-x-1/2 rounded bg-rose-500 px-1 py-0.5 text-[0.62rem] font-bold text-white" style={`left:${todayLeft}px`}>오늘</span>
+        )}
+      </div>
+    </div>
+
+    <!-- 과제 행 -->
+    {projects.map((p) => {
+      const x0 = leftPx(parseDate(p.period_start));
+      const x1 = leftPx(parseDateEnd(p.period_end));
+      return (
+        <div class="flex items-stretch border-t border-[var(--line)]">
+          <a href={`${base}projects/${p.slug}`} class="flex shrink-0 items-center gap-2 px-3 py-3 hover:bg-slate-50" style={`width:${LABEL_W}px`}>
+            <span class="h-2.5 w-2.5 shrink-0 rounded-full" style={`background:${p.color}`}></span>
+            <span class="truncate text-[0.8rem] font-semibold text-slate-700">{p.title}</span>
+          </a>
+          <div class="relative" style={`width:${trackW}px;height:52px`}>
+            <!-- 분기 그리드 -->
+            {months.map((m) => (m.getMonth() % 3 === 0 ? (
+              <div class={`absolute top-0 bottom-0 w-px ${m.getMonth() === 0 ? 'bg-slate-100' : 'bg-slate-50'}`} style={`left:${leftPx(m)}px`}></div>
+            ) : null))}
+            <!-- 오늘 선 -->
+            {todayInRange && (
+              <div class="absolute top-0 bottom-0 z-10 w-px bg-rose-400/70" style={`left:${todayLeft}px`}></div>
+            )}
+            <!-- 기간 막대 -->
+            <div
+              class="absolute top-1/2 -translate-y-1/2 rounded-full opacity-90"
+              style={`left:${x0}px;width:${Math.max(6, x1 - x0)}px;height:14px;background:${p.color};opacity:.22`}
+            ></div>
+            <!-- 이벤트 점 -->
+            {p.events.map((e) => (
+              <div
+                class="group absolute top-1/2 z-20 -translate-x-1/2 -translate-y-1/2"
+                style={`left:${leftPx(parseDate(e.date))}px`}
+              >
+                <div
+                  class="h-3 w-3 rounded-full border-2"
+                  style={`background:${dotFill[e.status] ?? '#fff'};border-color:${e.type === '마감' || e.type === '제출' ? '#e11d48' : p.color}`}
+                ></div>
+                <div class="pointer-events-none absolute bottom-5 left-1/2 z-30 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[0.68rem] font-medium text-white group-hover:block">
+                  {fmtDate(e.date)} · {e.label}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    })}
+  </div>
+</div>
+
+<!-- 범례 -->
+<div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[0.72rem] text-[var(--muted)]">
+  <span class="flex items-center gap-1.5"><span class="h-3 w-3 rounded-full border-2 border-slate-400 bg-slate-400"></span>완료</span>
+  <span class="flex items-center gap-1.5"><span class="h-3 w-3 rounded-full border-2 border-slate-400 bg-amber-400"></span>진행</span>
+  <span class="flex items-center gap-1.5"><span class="h-3 w-3 rounded-full border-2 border-slate-400 bg-white"></span>예정</span>
+  <span class="flex items-center gap-1.5"><span class="h-3 w-3 rounded-full border-2 border-rose-500 bg-white"></span>제출/마감</span>
+  <span class="flex items-center gap-1.5"><span class="inline-block h-2.5 w-4 rounded-full bg-slate-300"></span>과제 기간</span>
+  <span class="flex items-center gap-1.5"><span class="inline-block h-3 w-px bg-rose-400"></span>오늘</span>
+</div>

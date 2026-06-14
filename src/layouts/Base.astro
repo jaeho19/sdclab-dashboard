@@ -1,0 +1,59 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+const { title, description = 'SDC Lab 진행 중인 연구과제의 회의·진행상황·향후 일정을 한눈에' } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const updated = new Intl.DateTimeFormat('ko-KR', {
+  dateStyle: 'long',
+  timeStyle: 'short',
+  timeZone: 'Asia/Seoul',
+}).format(new Date());
+---
+
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <title>{title}</title>
+    <link rel="icon" href={`${base}favicon.svg`} type="image/svg+xml" />
+    <link
+      rel="stylesheet"
+      as="style"
+      crossorigin
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css"
+    />
+  </head>
+  <body>
+    <header class="sticky top-0 z-30 border-b border-[var(--line)] bg-white/85 backdrop-blur">
+      <div class="mx-auto flex max-w-6xl items-center justify-between px-5 py-3">
+        <a href={base} class="flex items-center gap-2.5">
+          <span class="grid h-8 w-8 place-items-center rounded-lg bg-slate-900 text-sm font-extrabold text-white">SDC</span>
+          <span class="text-[0.95rem] font-bold tracking-tight">연구과제 종합 대시보드</span>
+        </a>
+        <a
+          href="https://sdclab.netlify.app/projects"
+          target="_blank"
+          rel="noopener"
+          class="text-xs font-medium text-[var(--muted)] hover:text-slate-900"
+        >SDC Lab ↗</a>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-6xl px-5 pb-20 pt-7">
+      <slot />
+    </main>
+
+    <footer class="border-t border-[var(--line)] bg-white">
+      <div class="mx-auto max-w-6xl px-5 py-6 text-xs text-[var(--muted)]">
+        <p>마지막 빌드: {updated} (KST)</p>
+        <p class="mt-1">콘텐츠는 Obsidian 볼트의 <code class="rounded bg-slate-100 px-1">06_📋_연구대시보드/content/projects/</code> 에서 편집합니다.</p>
+      </div>
+    </footer>
+  </body>
+</html>

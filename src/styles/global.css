@@ -1,0 +1,104 @@
+@import 'tailwindcss';
+
+:root {
+  --bg: #f6f7f9;
+  --card: #ffffff;
+  --ink: #1a1d24;
+  --muted: #687087;
+  --line: #e6e8ee;
+}
+
+html {
+  font-family:
+    'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI',
+    'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  scroll-behavior: smooth;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 본문 마크다운(prose) 스타일 — typography 플러그인 없이 직접 정의 */
+.prose {
+  line-height: 1.7;
+  color: #2a2f3a;
+  font-size: 0.975rem;
+}
+.prose h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 1.6em 0 0.7em;
+  padding-bottom: 0.35em;
+  border-bottom: 1px solid var(--line);
+  color: #11151c;
+}
+.prose h3 {
+  font-size: 1.02rem;
+  font-weight: 700;
+  margin: 1.2em 0 0.5em;
+  color: #11151c;
+}
+.prose p {
+  margin: 0.6em 0;
+}
+.prose ul {
+  margin: 0.5em 0;
+  padding-left: 1.2em;
+  list-style: disc;
+}
+.prose ol {
+  margin: 0.5em 0;
+  padding-left: 1.3em;
+  list-style: decimal;
+}
+.prose li {
+  margin: 0.3em 0;
+}
+.prose strong {
+  font-weight: 700;
+  color: #11151c;
+}
+.prose a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+.prose code {
+  background: #eef0f4;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  font-size: 0.86em;
+}
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+  font-size: 0.9rem;
+}
+.prose th,
+.prose td {
+  border: 1px solid var(--line);
+  padding: 0.5em 0.7em;
+  text-align: left;
+}
+.prose th {
+  background: #f2f4f8;
+  font-weight: 700;
+}
+.prose blockquote {
+  border-left: 3px solid #cdd3df;
+  margin: 0.8em 0;
+  padding: 0.2em 0 0.2em 1em;
+  color: var(--muted);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  height: 8px;
+}
+.no-scrollbar::-webkit-scrollbar-thumb {
+  background: #d2d6df;
+  border-radius: 8px;
+}

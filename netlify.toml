@@ -1,0 +1,9 @@
+# Netlify 배포 설정 (GitHub 저장소를 Netlify에 연결하면 자동 적용)
+# 전환 방법은 편집가이드.md의 "Netlify로 전환" 참고.
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # Netlify는 루트(base="/")로 빌드. astro.config.mjs가 GITHUB_ACTIONS가 아닐 때 자동으로 base="/" 사용.

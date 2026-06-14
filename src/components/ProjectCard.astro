@@ -1,0 +1,86 @@
+---
+import StatusBadge from './StatusBadge.astro';
+import { fmtRange, fmtDate, dday, fmtDday, parseDate, today } from '../lib/dates';
+
+interface EventItem { date: string; label: string; type: string; status: string; }
+interface Props {
+  slug: string;
+  title: string;
+  title_en?: string;
+  agency: string;
+  period_start: string;
+  period_end: string;
+  status: string;
+  progress: number;
+  color: string;
+  keywords: string[];
+  events: EventItem[];
+}
+const p = Astro.props;
+const base = import.meta.env.BASE_URL;
+
+// 다음 일정: status가 '완료'가 아니고 오늘 이후(또는 오늘)인 이벤트 중 가장 가까운 것
+const t = today().getTime();
+const next = [...p.events]
+  .filter((e) => e.status !== '완료' && parseDate(e.date).getTime() >= t)
+  .sort((a, b) => parseDate(a.date).getTime() - parseDate(b.date).getTime())[0];
+const nextD = next ? dday(next.date) : null;
+---
+<a
+  href={`${base}projects/${p.slug}`}
+  class="group block rounded-2xl border border-[var(--line)] bg-white p-5 transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-slate-200/60"
+>
+  <div class="flex items-start justify-between gap-3">
+    <div class="min-w-0">
+      <div class="flex items-center gap-2">
+        <span class="h-2.5 w-2.5 shrink-0 rounded-full" style={`background:${p.color}`}></span>
+        <h3 class="truncate text-[1.05rem] font-bold tracking-tight">{p.title}</h3>
+      </div>
+      {p.title_en && <p class="mt-0.5 truncate text-xs text-[var(--muted)]">{p.title_en}</p>}
+    </div>
+    <StatusBadge status={p.status} />
+  </div>
+
+  <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--muted)]">
+    <span class="font-medium text-slate-600">{p.agency}</span>
+    <span>·</span>
+    <span>{fmtRange(p.period_start, p.period_end)}</span>
+  </div>
+
+  <!-- 진척바 -->
+  <div class="mt-4">
+    <div class="mb-1 flex items-center justify-between text-xs">
+      <span class="font-medium text-slate-500">진척도</span>
+      <span class="font-bold" style={`color:${p.color}`}>{p.progress}%</span>
+    </div>
+    <div class="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+      <div class="h-full rounded-full" style={`width:${p.progress}%;background:${p.color}`}></div>
+    </div>
+  </div>
+
+  <!-- 다음 일정 -->
+  <div class="mt-4 flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+    {next ? (
+      <>
+        <div class="min-w-0">
+          <p class="text-[0.7rem] font-semibold uppercase tracking-wide text-slate-400">다음 일정</p>
+          <p class="truncate text-sm font-medium text-slate-700">{next.label}</p>
+          <p class="text-xs text-[var(--muted)]">{fmtDate(next.date)} · {next.type}</p>
+        </div>
+        <span
+          class={`shrink-0 rounded-lg px-2 py-1 text-xs font-bold ${nextD !== null && nextD <= 14 ? 'bg-rose-100 text-rose-700' : 'bg-white text-slate-600 ring-1 ring-slate-200'}`}
+        >{fmtDday(nextD!)}</span>
+      </>
+    ) : (
+      <p class="text-sm text-[var(--muted)]">예정된 일정 없음</p>
+    )}
+  </div>
+
+  {p.keywords.length > 0 && (
+    <div class="mt-3 flex flex-wrap gap-1.5">
+      {p.keywords.slice(0, 5).map((k) => (
+        <span class="rounded-md bg-slate-100 px-1.5 py-0.5 text-[0.7rem] text-slate-500">{k}</span>
+      ))}
+    </div>
+  )}
+</a>

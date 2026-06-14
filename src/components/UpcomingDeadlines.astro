@@ -1,0 +1,49 @@
+---
+import { parseDate, today, dday, fmtDday, fmtDate } from '../lib/dates';
+
+interface FlatEvent {
+  date: string; label: string; type: string; status: string;
+  project: string; slug: string; color: string;
+}
+interface Props { events: FlatEvent[]; limit?: number; }
+const { events, limit = 8 } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const t = today().getTime();
+
+const upcoming = events
+  .filter((e) => e.status !== '완료' && parseDate(e.date).getTime() >= t)
+  .sort((a, b) => parseDate(a.date).getTime() - parseDate(b.date).getTime())
+  .slice(0, limit);
+
+const typeColor: Record<string, string> = {
+  '마감': 'text-rose-600', '제출': 'text-rose-600', '보고': 'text-amber-600',
+  '회의': 'text-sky-600', '마일스톤': 'text-slate-500',
+};
+---
+<div class="rounded-2xl border border-[var(--line)] bg-white p-5">
+  <h3 class="mb-3 text-sm font-bold text-slate-700">임박한 일정 <span class="font-normal text-[var(--muted)]">· 다가오는 {upcoming.length}건</span></h3>
+  {upcoming.length === 0 ? (
+    <p class="text-sm text-[var(--muted)]">예정된 일정이 없습니다.</p>
+  ) : (
+    <ul class="divide-y divide-[var(--line)]">
+      {upcoming.map((e) => {
+        const d = dday(e.date);
+        return (
+          <li>
+            <a href={`${base}projects/${e.slug}`} class="flex items-center gap-3 py-2.5 hover:bg-slate-50">
+              <span class="w-14 shrink-0 text-right text-xs font-medium text-[var(--muted)]">{fmtDate(e.date)}</span>
+              <span class="h-2 w-2 shrink-0 rounded-full" style={`background:${e.color}`}></span>
+              <span class="min-w-0 flex-1">
+                <span class="block truncate text-sm font-medium text-slate-700">{e.label}</span>
+                <span class="block text-xs text-[var(--muted)]">
+                  {e.project} · <span class={typeColor[e.type] ?? 'text-slate-500'}>{e.type}</span>
+                </span>
+              </span>
+              <span class={`shrink-0 rounded-lg px-2 py-1 text-xs font-bold ${d <= 14 ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'}`}>{fmtDday(d)}</span>
+            </a>
+          </li>
+        );
+      })}
+    </ul>
+  )}
+</div>
