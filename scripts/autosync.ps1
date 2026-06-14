@@ -19,6 +19,9 @@ if (-not $changes) { exit 0 }
 git add -A
 $stamp = Get-Date -Format 'yyyy-MM-dd HH:mm'
 git commit -m "content: 자동 업데이트 $stamp" | Out-Null
+# 다른 컴퓨터에서 올린 변경을 먼저 합친다 (충돌 시 안전하게 중단)
+git pull --rebase origin main
+if ($LASTEXITCODE -ne 0) { git rebase --abort 2>$null; Write-Output "원격과 충돌 — 수동으로 git pull 후 해결 필요 ($stamp)"; exit 1 }
 git push origin main
 
 # 2) 루트 빌드 (Netlify용 base="/")
