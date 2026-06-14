@@ -75,14 +75,6 @@ const typeColor: Record<string, string> = {
       </div>
     </div>
 
-    {p.years && p.years.length > 0 && (
-      <div class="mt-4 flex flex-wrap gap-2 text-xs">
-        {p.years.map((yr) => (
-          <span class="rounded-lg bg-slate-50 px-2.5 py-1 font-medium text-slate-600">{yr.label} · {fmtRange(yr.start, yr.end)}</span>
-        ))}
-      </div>
-    )}
-
     {p.team.length > 0 && (
       <div class="mt-4">
         <p class="mb-1.5 text-xs text-[var(--muted)]">참여진</p>
@@ -136,8 +128,30 @@ const typeColor: Record<string, string> = {
             <span class="text-xs font-medium text-[var(--muted)]">{fmtDate(latest.date)}{daysAgo !== null && daysAgo >= 0 ? ` · ${daysAgo === 0 ? '오늘' : daysAgo + '일 전'}` : ''}</span>
           </div>
           {latest.summary && <p class="mt-2 text-sm leading-relaxed text-slate-600">{latest.summary}</p>}
+          <div class="mt-3 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+            {latest.decisions.length > 0 && (
+              <div>
+                <p class="mb-2 text-xs font-bold text-emerald-700">✓ 이번 회의 결정 사항</p>
+                <ul class="space-y-1.5">
+                  {latest.decisions.map((d: string) => (
+                    <li class="flex items-start gap-2 text-sm leading-relaxed text-slate-700"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400"></span><span>{d}</span></li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {latest.next.length > 0 && (
+              <div>
+                <p class="mb-2 text-xs font-bold text-indigo-700">▶ 다음 회의·진행 업무</p>
+                <ul class="space-y-1.5">
+                  {latest.next.map((n: string) => (
+                    <li class="flex items-start gap-2 text-sm leading-relaxed text-slate-700"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-400"></span><span>{n}</span></li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
           {meetings.length > 1 && (
-            <a href={`${base}projects/${entry.id}/archive`} class="mt-3 inline-block text-xs font-medium text-slate-400 hover:text-slate-700">이전 회의 {meetings.length - 1}건 보기 →</a>
+            <a href={`${base}projects/${entry.id}/archive`} class="mt-4 inline-block text-xs font-medium text-slate-400 hover:text-slate-700">이전 회의 {meetings.length - 1}건 전체 보기 →</a>
           )}
         </div>
       ) : (

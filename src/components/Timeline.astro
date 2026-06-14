@@ -1,5 +1,5 @@
 ---
-import { parseDate, parseDateEnd, pct, today, fmtDate, fmtMD } from '../lib/dates';
+import { parseDate, parseDateEnd, pct, today, fmtDate, fmtMD, fmtRange } from '../lib/dates';
 
 interface EventItem { date: string; label: string; type: string; status: string; }
 interface YearPhase { label: string; start: string; end: string; }
@@ -8,9 +8,10 @@ interface ProjectRow {
   period_start: string; period_end: string; events: EventItem[];
   years?: YearPhase[];
 }
-interface Props { projects: ProjectRow[]; from?: string; }
-const { projects, from } = Astro.props;
+interface Props { projects: ProjectRow[]; from?: string; mode?: 'overview' | 'detail'; }
+const { projects, from, mode = 'detail' } = Astro.props;
 const base = import.meta.env.BASE_URL;
+const detail = mode === 'detail';
 
 // ── 구간 계산 ───────────────────────────────
 let minD = Infinity, maxD = -Infinity;
@@ -21,18 +22,18 @@ for (const p of projects) {
   for (const y of p.years ?? []) { minD = Math.min(minD, parseDate(y.start).getTime()); maxD = Math.max(maxD, parseDateEnd(y.end).getTime()); }
 }
 let min = new Date(minD), max = new Date(maxD);
-if (from) min = parseDate(from);                                  // 축 시작 강제(예: 2026-01)
-min = new Date(min.getFullYear(), min.getMonth(), 1);            // 월 시작
-max = new Date(max.getFullYear(), max.getMonth() + 1, 0);        // 월 말
+if (from) min = parseDate(from);
+min = new Date(min.getFullYear(), min.getMonth(), 1);
+max = new Date(max.getFullYear(), max.getMonth() + 1, 0);
 
 const months: Date[] = [];
 let cur = new Date(min);
 while (cur <= max) { months.push(new Date(cur)); cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1); }
 
-const PX = 42;
+const PX = detail ? 130 : 42;            // detail: 확대(월 130px), overview: 축소(월 42px)
 const trackW = months.length * PX;
 const LABEL_W = 150;
-const ROW = 76;
+const ROW = detail ? 76 : 50;
 const leftPx = (d: Date) => (pct(d, min, max) / 100) * trackW;
 const todayD = today();
 const todayLeft = leftPx(todayD);
@@ -40,13 +41,27 @@ const todayIn = todayD >= min && todayD <= max;
 const inRange = (d: Date) => d >= min && d <= max;
 
 const dotFill: Record<string, string> = { '완료': '#94a3b8', '진행': '#f59e0b', '예정': '#ffffff' };
+const yearRows = projects.filter((p) => p.years && p.years.length > 0);
+
+// 행별 이벤트 + 라벨 솎아내기(겹침 방지)
+const rowItems = projects.map((p) => {
+  const evs = p.events.filter((e) => inRange(parseDate(e.date))).sort((a, b) => parseDate(a.date).getTime() - parseDate(b.date).getTime());
+  let lastLabelX = -Infinity, li = 0;
+  return evs.map((e) => {
+    const x = leftPx(parseDate(e.date));
+    let showLabel = detail && x - lastLabelX >= 30;
+    let above = false;
+    if (showLabel) { above = li % 2 === 0; li++; lastLabelX = x; }
+    return { e, x, showLabel, above };
+  });
+});
 ---
-<div class="overflow-x-auto no-scrollbar rounded-2xl border border-[var(--line)] bg-white">
+<div class="overflow-x-auto no-scrollbar rounded-2xl border border-[var(--line)] bg-white" data-today-x={detail && todayIn ? Math.round(LABEL_W + todayLeft) : undefined}>
   <div style={`min-width:${LABEL_W + trackW}px`}>
 
     <!-- 월 눈금 헤더 -->
     <div class="flex items-end border-b border-[var(--line)]">
-      <div class="shrink-0" style={`width:${LABEL_W}px`}></div>
+      <div class="sticky left-0 z-30 shrink-0 bg-white" style={`width:${LABEL_W}px;height:40px`}></div>
       <div class="relative" style={`width:${trackW}px;height:40px`}>
         {months.map((m) => {
           const isYear = m.getMonth() === 0;
@@ -68,25 +83,21 @@ const dotFill: Record<string, string> = { '완료': '#94a3b8', '진행': '#f59e0
     </div>
 
     <!-- 과제 행 -->
-    {projects.map((p) => {
+    {projects.map((p, ri) => {
       const x0 = leftPx(parseDate(p.period_start));
       const x1 = leftPx(parseDateEnd(p.period_end));
-      const evs = p.events.filter((e) => inRange(parseDate(e.date)));
       return (
         <div class="flex items-stretch border-t border-[var(--line)]">
-          <a href={`${base}projects/${p.slug}`} class="flex shrink-0 items-center gap-2 px-3 py-3 hover:bg-slate-50" style={`width:${LABEL_W}px`}>
+          <a href={`${base}projects/${p.slug}`} class="sticky left-0 z-30 flex shrink-0 items-center gap-2 bg-white px-3 hover:bg-slate-50" style={`width:${LABEL_W}px`}>
             <span class="h-2.5 w-2.5 shrink-0 rounded-full" style={`background:${p.color}`}></span>
             <span class="truncate text-[0.8rem] font-semibold text-slate-700">{p.title}</span>
           </a>
           <div class="relative" style={`width:${trackW}px;height:${ROW}px`}>
-            <!-- 월 그리드 -->
             {months.map((m) => (
               <div class={`absolute top-0 bottom-0 w-px ${m.getMonth() === 0 ? 'bg-slate-100' : 'bg-slate-50'}`} style={`left:${leftPx(m)}px`}></div>
             ))}
-            <!-- 오늘 선 -->
             {todayIn && <div class="absolute top-0 bottom-0 z-10 w-px bg-rose-400/70" style={`left:${todayLeft}px`}></div>}
 
-            <!-- 기간 막대 / 연차 -->
             {p.years && p.years.length > 0 ? (
               p.years.map((yr) => {
                 const a = leftPx(parseDate(yr.start));
@@ -105,10 +116,7 @@ const dotFill: Record<string, string> = { '완료': '#94a3b8', '진행': '#f59e0
               <div class="absolute top-1/2 -translate-y-1/2 rounded-full" style={`left:${x0}px;width:${Math.max(6, x1 - x0)}px;height:14px;background:${p.color};opacity:.22`}></div>
             )}
 
-            <!-- 이벤트 점 + 날짜 라벨(위/아래 번갈아) -->
-            {evs.map((e, i) => {
-              const x = leftPx(parseDate(e.date));
-              const above = i % 2 === 0;
+            {rowItems[ri].map(({ e, x, showLabel, above }) => {
               const edge = e.type === '마감' || e.type === '제출';
               return (
                 <Fragment>
@@ -117,10 +125,12 @@ const dotFill: Record<string, string> = { '완료': '#94a3b8', '진행': '#f59e0
                     style={`left:${x}px;top:50%;background:${dotFill[e.status] ?? '#fff'};border-color:${edge ? '#e11d48' : p.color}`}
                     title={`${fmtDate(e.date)} · ${e.label}`}
                   ></div>
-                  <span
-                    class="absolute z-20 -translate-x-1/2 whitespace-nowrap text-[0.56rem] font-semibold"
-                    style={`left:${x}px;top:${above ? 'calc(50% - 22px)' : 'calc(50% + 12px)'};color:${edge ? '#e11d48' : '#64748b'}`}
-                  >{fmtMD(e.date)}</span>
+                  {showLabel && (
+                    <span
+                      class="absolute z-20 -translate-x-1/2 whitespace-nowrap text-[0.58rem] font-semibold"
+                      style={`left:${x}px;top:${above ? 'calc(50% - 22px)' : 'calc(50% + 12px)'};color:${edge ? '#e11d48' : '#64748b'}`}
+                    >{fmtMD(e.date)}</span>
+                  )}
                 </Fragment>
               );
             })}
@@ -137,6 +147,32 @@ const dotFill: Record<string, string> = { '완료': '#94a3b8', '진행': '#f59e0
   <span class="flex items-center gap-1.5"><span class="h-3 w-3 rounded-full border-2 border-slate-400 bg-amber-400"></span>진행</span>
   <span class="flex items-center gap-1.5"><span class="h-3 w-3 rounded-full border-2 border-slate-400 bg-white"></span>예정</span>
   <span class="flex items-center gap-1.5"><span class="h-3 w-3 rounded-full border-2 border-rose-500 bg-white"></span>제출/마감</span>
-  <span class="flex items-center gap-1.5"><span class="inline-block h-2.5 w-4 rounded-full bg-slate-300"></span>과제 기간/연차</span>
   <span class="flex items-center gap-1.5"><span class="inline-block h-3 w-px bg-rose-400"></span>오늘</span>
+  {detail && <span class="text-slate-400">· 좌우로 스크롤하면 전체 일정을 볼 수 있습니다 (점 위에 마우스를 올리면 상세)</span>}
 </div>
+
+<!-- 연차 구분 (하단 별도 표기) -->
+{yearRows.length > 0 && (
+  <div class="mt-3 rounded-xl bg-slate-50 px-4 py-3">
+    <p class="mb-1.5 text-[0.7rem] font-semibold uppercase tracking-wide text-slate-400">연차 구분 (R&D)</p>
+    <div class="space-y-1.5">
+      {yearRows.map((p) => (
+        <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.74rem]">
+          <span class="flex items-center gap-1 font-semibold text-slate-700"><span class="h-2 w-2 rounded-full" style={`background:${p.color}`}></span>{p.title}</span>
+          {p.years!.map((y) => (
+            <span class="rounded-md border border-[var(--line)] bg-white px-2 py-0.5 text-slate-600">{y.label} · {fmtRange(y.start, y.end)}</span>
+          ))}
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
+{detail && (
+  <script is:inline>
+    for (const el of document.querySelectorAll('[data-today-x]')) {
+      const x = parseFloat(el.getAttribute('data-today-x'));
+      if (!Number.isNaN(x)) el.scrollLeft = Math.max(0, x - el.clientWidth * 0.38);
+    }
+  </script>
+)}

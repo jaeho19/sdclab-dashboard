@@ -48,6 +48,26 @@ const stBadge: Record<string, string> = {
                 <span class="text-xs font-medium text-[var(--muted)]">{fmtDate(m.date)}</span>
               </div>
               {m.summary && <p class="mt-1.5 text-sm leading-relaxed text-slate-600">{m.summary}</p>}
+              {m.decisions.length > 0 && (
+                <div class="mt-2">
+                  <p class="mb-1 text-xs font-bold text-emerald-700">✓ 결정 사항</p>
+                  <ul class="space-y-1">
+                    {m.decisions.map((d: string) => (
+                      <li class="flex items-start gap-2 text-sm leading-relaxed text-slate-700"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400"></span><span>{d}</span></li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {m.next.length > 0 && (
+                <div class="mt-2">
+                  <p class="mb-1 text-xs font-bold text-indigo-700">▶ 다음 업무</p>
+                  <ul class="space-y-1">
+                    {m.next.map((n: string) => (
+                      <li class="flex items-start gap-2 text-sm leading-relaxed text-slate-700"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-400"></span><span>{n}</span></li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </li>
         ))}

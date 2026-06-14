@@ -12,7 +12,6 @@ const rows = projects.map((p) => ({
   period_start: p.period_start, period_end: p.period_end, events: p.events, years: p.years,
 }));
 
-const activeCount = projects.filter((p) => p.status !== '완료').length;
 ---
 <Base title="연구과제 종합 대시보드 · SDC Lab">
   <section class="mb-7">
@@ -22,22 +21,12 @@ const activeCount = projects.filter((p) => p.status !== '완료').length;
     <p class="mt-1.5 text-sm text-[var(--muted)]">
       진행 중인 {projects.length}개 과제의 현재 진행 상황과 향후 일정. 과제 카드를 누르면 상세 현황으로 이동합니다.
     </p>
-    <div class="mt-4 flex flex-wrap gap-3">
-      <div class="rounded-xl border border-[var(--line)] bg-white px-4 py-2.5">
-        <div class="text-lg font-extrabold text-slate-900">{projects.length}</div>
-        <div class="text-xs text-[var(--muted)]">전체 과제</div>
-      </div>
-      <div class="rounded-xl border border-[var(--line)] bg-white px-4 py-2.5">
-        <div class="text-lg font-extrabold text-emerald-600">{activeCount}</div>
-        <div class="text-xs text-[var(--muted)]">진행 중</div>
-      </div>
-    </div>
   </section>
 
   <!-- 통합 타임라인 -->
   <section class="mb-9">
     <h2 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">전체 일정 (통합 타임라인)</h2>
-    <Timeline projects={rows} from="2026-01" />
+    <Timeline projects={rows} from="2026-01" mode="overview" />
   </section>
 
   <!-- 과제별 현황 -->
