@@ -9,7 +9,7 @@ import tailwindcss from '@tailwindcss/vite';
 const isPages = process.env.DEPLOY_TARGET === 'pages' || process.env.GITHUB_ACTIONS === 'true';
 
 export default defineConfig({
-  site: isPages ? 'https://jaeho19.github.io' : 'https://sdclab-dashboard.netlify.app',
+  site: isPages ? 'https://jaeho19.github.io' : 'https://sdclab-dashboard-156.netlify.app',
   base: isPages ? '/sdclab-dashboard/' : '/',
   trailingSlash: 'ignore',
   vite: {

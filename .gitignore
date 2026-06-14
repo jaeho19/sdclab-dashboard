@@ -22,3 +22,6 @@ Thumbs.db
 
 # OMC 세션 상태 (자동 생성)
 .omc/
+
+# Local Netlify folder
+.netlify
