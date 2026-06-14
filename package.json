@@ -7,11 +7,17 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
+    "build:pages": "cross-env DEPLOY_TARGET=pages astro build",
+    "deploy": "npm run build:pages && gh-pages -d dist --nojekyll -b gh-pages -m \"deploy\"",
     "preview": "astro preview"
   },
   "dependencies": {
     "astro": "^5.7.0",
     "tailwindcss": "^4.1.0",
     "@tailwindcss/vite": "^4.1.0"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "gh-pages": "^6.3.0"
   }
 }

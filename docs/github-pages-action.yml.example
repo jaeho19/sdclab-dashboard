@@ -1,0 +1,45 @@
+# GitHub Actions 기반 배포 (선택) — 로컬 빌드 대신 GitHub에서 빌드하고 싶을 때
+#
+# 사용법:
+#   1) PowerShell:  gh auth refresh -h github.com -s workflow   (workflow 권한 추가 — 브라우저 1회)
+#   2) 이 파일을  .github/workflows/deploy.yml  로 복사
+#   3) GitHub 저장소 Settings → Pages → Source 를 "GitHub Actions" 로 변경
+#   4) push 하면 GitHub가 빌드·배포 (이 경우 PC 로컬 빌드 불필요)
+#
+# 이 방식을 쓰면 scripts/autosync.ps1 의 'npm run deploy' 줄은 빼고
+# 'git push origin main' 까지만 두면 됩니다.
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: withastro/action@v3
+        with:
+          path: .
+          node-version: 22
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
