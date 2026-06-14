@@ -37,6 +37,13 @@ export function fmtRange(start: string, end: string): string {
   return `${fmtDate(start)} – ${fmtDate(end)}`;
 }
 
+// 타임라인용 짧은 날짜: 'M/D' (일까지) 또는 'M월' (월까지)
+export function fmtMD(s: string): string {
+  const p = s.split('-');
+  if (p.length >= 3) return `${parseInt(p[1], 10)}/${parseInt(p[2], 10)}`;
+  return `${parseInt(p[1], 10)}월`;
+}
+
 // min~max 구간에서 date의 위치(%)
 export function pct(date: Date, min: Date, max: Date): number {
   const span = max.getTime() - min.getTime();

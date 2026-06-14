@@ -34,6 +34,9 @@ const projects = defineCollection({
     summary: z.string().optional(),           // 카드/메타 한 줄 요약
     purpose: z.string().optional(),           // 우리 팀의 목적/목표
     current_stage: z.string().optional(),     // 현재 진행 단계
+    highlights: z
+      .array(z.object({ label: z.string(), items: z.array(z.string()).default([]), note: z.string().optional() }))
+      .default([]),                           // 강조 콜아웃(예: MVP 데이터 목록)
     years: z
       .array(z.object({ label: z.string(), start: flexDate, end: flexDate }))
       .default([]),                           // 연차 구분 (다년차 과제)

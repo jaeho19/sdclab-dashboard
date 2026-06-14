@@ -1,5 +1,5 @@
 ---
-import { parseDate, parseDateEnd, pct, today, fmtDate } from '../lib/dates';
+import { parseDate, parseDateEnd, pct, today, fmtDate, fmtMD } from '../lib/dates';
 
 interface EventItem { date: string; label: string; type: string; status: string; }
 interface YearPhase { label: string; start: string; end: string; }
@@ -8,59 +8,61 @@ interface ProjectRow {
   period_start: string; period_end: string; events: EventItem[];
   years?: YearPhase[];
 }
-interface Props { projects: ProjectRow[]; }
-const { projects } = Astro.props;
+interface Props { projects: ProjectRow[]; from?: string; }
+const { projects, from } = Astro.props;
 const base = import.meta.env.BASE_URL;
 
-// ── 전체 구간 계산 ───────────────────────────────
+// ── 구간 계산 ───────────────────────────────
 let minD = Infinity, maxD = -Infinity;
 for (const p of projects) {
   minD = Math.min(minD, parseDate(p.period_start).getTime());
   maxD = Math.max(maxD, parseDateEnd(p.period_end).getTime());
-  for (const e of p.events) {
-    const t = parseDate(e.date).getTime();
-    minD = Math.min(minD, t); maxD = Math.max(maxD, t);
-  }
+  for (const e of p.events) { const t = parseDate(e.date).getTime(); minD = Math.min(minD, t); maxD = Math.max(maxD, t); }
+  for (const y of p.years ?? []) { minD = Math.min(minD, parseDate(y.start).getTime()); maxD = Math.max(maxD, parseDateEnd(y.end).getTime()); }
 }
 let min = new Date(minD), max = new Date(maxD);
-min = new Date(min.getFullYear(), Math.floor(min.getMonth() / 3) * 3, 1);   // 분기 시작
-max = new Date(max.getFullYear(), Math.floor(max.getMonth() / 3) * 3 + 3, 0); // 분기 끝
+if (from) min = parseDate(from);                                  // 축 시작 강제(예: 2026-01)
+min = new Date(min.getFullYear(), min.getMonth(), 1);            // 월 시작
+max = new Date(max.getFullYear(), max.getMonth() + 1, 0);        // 월 말
 
 const months: Date[] = [];
 let cur = new Date(min);
 while (cur <= max) { months.push(new Date(cur)); cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1); }
 
-const PX = 38;                         // 월당 픽셀
+const PX = 42;
 const trackW = months.length * PX;
-const LABEL_W = 156;
+const LABEL_W = 150;
+const ROW = 76;
 const leftPx = (d: Date) => (pct(d, min, max) / 100) * trackW;
-const todayLeft = leftPx(today());
-const todayInRange = today() >= min && today() <= max;
+const todayD = today();
+const todayLeft = leftPx(todayD);
+const todayIn = todayD >= min && todayD <= max;
+const inRange = (d: Date) => d >= min && d <= max;
 
 const dotFill: Record<string, string> = { '완료': '#94a3b8', '진행': '#f59e0b', '예정': '#ffffff' };
 ---
 <div class="overflow-x-auto no-scrollbar rounded-2xl border border-[var(--line)] bg-white">
   <div style={`min-width:${LABEL_W + trackW}px`}>
 
-    <!-- 연/분기 눈금 헤더 -->
-    <div class="flex items-end">
+    <!-- 월 눈금 헤더 -->
+    <div class="flex items-end border-b border-[var(--line)]">
       <div class="shrink-0" style={`width:${LABEL_W}px`}></div>
-      <div class="relative" style={`width:${trackW}px;height:34px`}>
+      <div class="relative" style={`width:${trackW}px;height:40px`}>
         {months.map((m) => {
           const isYear = m.getMonth() === 0;
-          const isQ = m.getMonth() % 3 === 0;
-          if (!isQ) return null;
           return (
             <div class="absolute bottom-0" style={`left:${leftPx(m)}px`}>
-              <div class={`h-3 w-px ${isYear ? 'bg-slate-300' : 'bg-slate-200'}`}></div>
-              <span class={`absolute bottom-3.5 left-1 whitespace-nowrap text-[0.68rem] ${isYear ? 'font-bold text-slate-600' : 'text-slate-400'}`}>
-                {isYear ? `${m.getFullYear()}` : `Q${Math.floor(m.getMonth() / 3) + 1}`}
-              </span>
+              <div class={`w-px ${isYear ? 'h-4 bg-slate-300' : 'h-2 bg-slate-200'}`}></div>
+              <span class="absolute bottom-2.5 left-0.5 text-[0.58rem] text-slate-400">{m.getMonth() + 1}</span>
+              {isYear && <span class="absolute bottom-6 left-0.5 whitespace-nowrap text-[0.72rem] font-bold text-slate-600">{m.getFullYear()}</span>}
             </div>
           );
         })}
-        {todayInRange && (
-          <span class="absolute -top-0.5 z-10 -translate-x-1/2 rounded bg-rose-500 px-1 py-0.5 text-[0.62rem] font-bold text-white" style={`left:${todayLeft}px`}>오늘</span>
+        {min.getMonth() !== 0 && (
+          <span class="absolute bottom-6 left-1 whitespace-nowrap text-[0.72rem] font-bold text-slate-600">{min.getFullYear()}</span>
+        )}
+        {todayIn && (
+          <span class="absolute -top-0.5 z-10 -translate-x-1/2 rounded bg-rose-500 px-1 py-0.5 text-[0.6rem] font-bold text-white" style={`left:${todayLeft}px`}>오늘</span>
         )}
       </div>
     </div>
@@ -69,21 +71,21 @@ const dotFill: Record<string, string> = { '완료': '#94a3b8', '진행': '#f59e0
     {projects.map((p) => {
       const x0 = leftPx(parseDate(p.period_start));
       const x1 = leftPx(parseDateEnd(p.period_end));
+      const evs = p.events.filter((e) => inRange(parseDate(e.date)));
       return (
         <div class="flex items-stretch border-t border-[var(--line)]">
           <a href={`${base}projects/${p.slug}`} class="flex shrink-0 items-center gap-2 px-3 py-3 hover:bg-slate-50" style={`width:${LABEL_W}px`}>
             <span class="h-2.5 w-2.5 shrink-0 rounded-full" style={`background:${p.color}`}></span>
             <span class="truncate text-[0.8rem] font-semibold text-slate-700">{p.title}</span>
           </a>
-          <div class="relative" style={`width:${trackW}px;height:52px`}>
-            <!-- 분기 그리드 -->
-            {months.map((m) => (m.getMonth() % 3 === 0 ? (
+          <div class="relative" style={`width:${trackW}px;height:${ROW}px`}>
+            <!-- 월 그리드 -->
+            {months.map((m) => (
               <div class={`absolute top-0 bottom-0 w-px ${m.getMonth() === 0 ? 'bg-slate-100' : 'bg-slate-50'}`} style={`left:${leftPx(m)}px`}></div>
-            ) : null))}
+            ))}
             <!-- 오늘 선 -->
-            {todayInRange && (
-              <div class="absolute top-0 bottom-0 z-10 w-px bg-rose-400/70" style={`left:${todayLeft}px`}></div>
-            )}
+            {todayIn && <div class="absolute top-0 bottom-0 z-10 w-px bg-rose-400/70" style={`left:${todayLeft}px`}></div>}
+
             <!-- 기간 막대 / 연차 -->
             {p.years && p.years.length > 0 ? (
               p.years.map((yr) => {
@@ -93,33 +95,35 @@ const dotFill: Record<string, string> = { '완료': '#94a3b8', '진행': '#f59e0
                 return (
                   <Fragment>
                     <div class="absolute top-1/2 -translate-y-1/2 rounded-md" style={`left:${a}px;width:${w}px;height:16px;background:${p.color};opacity:.18`}></div>
-                    {w > 40 && (
+                    {w > 44 && (
                       <span class="absolute top-1/2 z-[5] -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-[0.6rem] font-bold" style={`left:${a + w / 2}px;color:${p.color}`}>{yr.label}</span>
                     )}
                   </Fragment>
                 );
               })
             ) : (
-              <div
-                class="absolute top-1/2 -translate-y-1/2 rounded-full"
-                style={`left:${x0}px;width:${Math.max(6, x1 - x0)}px;height:14px;background:${p.color};opacity:.22`}
-              ></div>
+              <div class="absolute top-1/2 -translate-y-1/2 rounded-full" style={`left:${x0}px;width:${Math.max(6, x1 - x0)}px;height:14px;background:${p.color};opacity:.22`}></div>
             )}
-            <!-- 이벤트 점 -->
-            {p.events.map((e) => (
-              <div
-                class="group absolute top-1/2 z-20 -translate-x-1/2 -translate-y-1/2"
-                style={`left:${leftPx(parseDate(e.date))}px`}
-              >
-                <div
-                  class="h-3 w-3 rounded-full border-2"
-                  style={`background:${dotFill[e.status] ?? '#fff'};border-color:${e.type === '마감' || e.type === '제출' ? '#e11d48' : p.color}`}
-                ></div>
-                <div class="pointer-events-none absolute bottom-5 left-1/2 z-30 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[0.68rem] font-medium text-white group-hover:block">
-                  {fmtDate(e.date)} · {e.label}
-                </div>
-              </div>
-            ))}
+
+            <!-- 이벤트 점 + 날짜 라벨(위/아래 번갈아) -->
+            {evs.map((e, i) => {
+              const x = leftPx(parseDate(e.date));
+              const above = i % 2 === 0;
+              const edge = e.type === '마감' || e.type === '제출';
+              return (
+                <Fragment>
+                  <div
+                    class="absolute z-20 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2"
+                    style={`left:${x}px;top:50%;background:${dotFill[e.status] ?? '#fff'};border-color:${edge ? '#e11d48' : p.color}`}
+                    title={`${fmtDate(e.date)} · ${e.label}`}
+                  ></div>
+                  <span
+                    class="absolute z-20 -translate-x-1/2 whitespace-nowrap text-[0.56rem] font-semibold"
+                    style={`left:${x}px;top:${above ? 'calc(50% - 22px)' : 'calc(50% + 12px)'};color:${edge ? '#e11d48' : '#64748b'}`}
+                  >{fmtMD(e.date)}</span>
+                </Fragment>
+              );
+            })}
           </div>
         </div>
       );
@@ -133,6 +137,6 @@ const dotFill: Record<string, string> = { '완료': '#94a3b8', '진행': '#f59e0
   <span class="flex items-center gap-1.5"><span class="h-3 w-3 rounded-full border-2 border-slate-400 bg-amber-400"></span>진행</span>
   <span class="flex items-center gap-1.5"><span class="h-3 w-3 rounded-full border-2 border-slate-400 bg-white"></span>예정</span>
   <span class="flex items-center gap-1.5"><span class="h-3 w-3 rounded-full border-2 border-rose-500 bg-white"></span>제출/마감</span>
-  <span class="flex items-center gap-1.5"><span class="inline-block h-2.5 w-4 rounded-full bg-slate-300"></span>과제 기간</span>
+  <span class="flex items-center gap-1.5"><span class="inline-block h-2.5 w-4 rounded-full bg-slate-300"></span>과제 기간/연차</span>
   <span class="flex items-center gap-1.5"><span class="inline-block h-3 w-px bg-rose-400"></span>오늘</span>
 </div>

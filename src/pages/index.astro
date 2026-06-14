@@ -13,9 +13,6 @@ const rows = projects.map((p) => ({
 }));
 
 const activeCount = projects.filter((p) => p.status !== '완료').length;
-const avgProgress = projects.length
-  ? Math.round(projects.reduce((s, p) => s + p.progress, 0) / projects.length)
-  : 0;
 ---
 <Base title="연구과제 종합 대시보드 · SDC Lab">
   <section class="mb-7">
@@ -34,17 +31,13 @@ const avgProgress = projects.length
         <div class="text-lg font-extrabold text-emerald-600">{activeCount}</div>
         <div class="text-xs text-[var(--muted)]">진행 중</div>
       </div>
-      <div class="rounded-xl border border-[var(--line)] bg-white px-4 py-2.5">
-        <div class="text-lg font-extrabold text-slate-900">{avgProgress}%</div>
-        <div class="text-xs text-[var(--muted)]">평균 진척도</div>
-      </div>
     </div>
   </section>
 
   <!-- 통합 타임라인 -->
   <section class="mb-9">
     <h2 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">전체 일정 (통합 타임라인)</h2>
-    <Timeline projects={rows} />
+    <Timeline projects={rows} from="2026-01" />
   </section>
 
   <!-- 과제별 현황 -->

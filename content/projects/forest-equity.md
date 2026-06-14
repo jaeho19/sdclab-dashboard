@@ -39,7 +39,7 @@ next_tasks:
   - { task: Sentinel-2 NDVI 파이프라인 구축 (5~10월 합성·구름처리·마스킹) }
   - { task: 전국(Tier1)·거점도시(Tier2) 3-30-300 산정 및 K-TES 지도화 }
   - { task: 솔루션 Before/After 시뮬레이션 + 단·중·장기 투자·관리 로드맵 }
-  - { task: 심포지엄 1회 이상 개최, due: 2026-08 }
+  - { task: 심포지엄 1회 이상 개최 (9~10월경), due: 2026-10 }
   - { task: 최종 산출물 납품, due: 2026-11-30 }
 events:
   - { date: 2026-03-13, label: 입찰공고서 발행, type: 마일스톤, status: 완료 }
@@ -51,7 +51,7 @@ events:
   - { date: 2026-04-29, label: 산림청 착수보고, type: 보고, status: 완료 }
   - { date: 2026-05-13, label: 한국형 3-30-300 지표 기준 확정, type: 회의, status: 완료 }
   - { date: 2026-05-26, label: 산림청 가로수 데이터 수령, type: 마일스톤, status: 예정 }
-  - { date: 2026-08, label: 심포지엄 개최 (7~9월), type: 마일스톤, status: 예정 }
+  - { date: 2026-10, label: 심포지엄 개최 (9~10월경), type: 마일스톤, status: 예정 }
   - { date: 2026-11-30, label: 최종 산출물 납품, type: 마감, status: 예정 }
   - { date: 2026-12-01, label: 과업 공식 종료, type: 마감, status: 예정 }
 ---

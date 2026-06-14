@@ -99,6 +99,26 @@ const typeColor: Record<string, string> = {
     )}
   </div>
 
+  <!-- 강조 콜아웃 (예: MVP 데이터 목록) -->
+  {p.highlights && p.highlights.length > 0 && (
+    <section class="mt-6 space-y-3">
+      {p.highlights.map((h) => (
+        <div class="rounded-2xl border border-[var(--line)] bg-white p-5" style={`border-left:5px solid ${p.color}`}>
+          <p class="text-sm font-bold text-slate-800">{h.label}</p>
+          <ul class="mt-2.5 space-y-1.5">
+            {h.items.map((it) => (
+              <li class="flex items-start gap-2 text-sm leading-relaxed text-slate-700">
+                <span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" style={`background:${p.color}`}></span>
+                <span>{it}</span>
+              </li>
+            ))}
+          </ul>
+          {h.note && <p class="mt-2.5 rounded-lg bg-slate-50 px-3 py-2 text-xs leading-relaxed text-[var(--muted)]">{h.note}</p>}
+        </div>
+      ))}
+    </section>
+  )}
+
   <!-- 타임라인 -->
   <section class="mt-7">
     <h2 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">타임라인</h2>
