@@ -1,5 +1,7 @@
 # SDC Lab 연구과제 종합 대시보드
 
+🔗 **배포 주소:** https://jaeho19.github.io/sdclab-dashboard/
+
 진행 중인 연구과제의 **회의 내용 · 진행상황 · 향후 일정**을 한 페이지에서 보고 관리하는 정적 대시보드.
 
 - **프레임워크:** [Astro](https://astro.build) 5 + Tailwind CSS 4
