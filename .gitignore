@@ -25,3 +25,8 @@ Thumbs.db
 
 # Local Netlify folder
 .netlify
+
+# 로컬 전용 회의록 자동 큐레이션 (머신별 설정·경로 포함, 공개 repo에 커밋 안 함)
+scripts/daily-curate-prompt.md
+scripts/daily-curate.ps1
+scripts/daily-curate.log
