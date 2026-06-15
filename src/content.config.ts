@@ -56,6 +56,29 @@ const projects = defineCollection({
     next_tasks: z
       .array(z.object({ task: z.string(), due: flexDate.optional(), done: z.boolean().default(false) }))
       .default([]),                           // 향후 주요 과제
+    flow: z
+      .object({
+        note: z.string().optional(),          // 흐름도 하단 설명(서술형)
+        stages: z
+          .array(
+            z.object({
+              label: z.string(),                                   // 단계 이름 (예: '가. 실태조사')
+              status: flowState.default('예정'),                   // 완료 / 진행 / 다음주 / 예정
+              summary: z.string().optional(),                      // 레일 노드에 보이는 한 줄
+              period: z.string().optional(),                       // 예: '2026-03~04'
+              steps: z
+                .array(
+                  z.preprocess(
+                    (v) => (typeof v === 'string' ? { text: v } : v),
+                    z.object({ text: z.string(), status: flowState.default('예정') }),
+                  ),
+                )
+                .default([]),                                      // 세부 단계(토글 시 펼침)
+            }),
+          )
+          .default([]),
+      })
+      .optional(),                            // 연구 흐름도 (단계별 진행 상태)
     events: z
       .array(
         z.object({
