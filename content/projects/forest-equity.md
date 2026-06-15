@@ -59,6 +59,48 @@ next_tasks:
   - { task: "Sentinel-2 NDVI 파이프라인 구축 (5~10월 합성·구름처리·마스킹)" }
   - { task: "거점도시 1~2곳 K-TES 점수 시뮬레이션 (데이터 도착 전 선행)" }
   - { task: "전국(Tier1)·거점도시(Tier2) 3-30-300 지표 산정 및 K-TES 지도화" }
+flow:
+  note: "산림청 용역은 '가. 실태조사 → 나. 지표개발 → 다. 전략마련 → 라. 기타(심포지엄·납품)' 4개 과업으로 진행된다. 현재는 실태조사를 마치고 K-TES 지표개발(2단계)에 진입한 상태로, 산림청 가로수 데이터로 수관탐지 모델을 파인튜닝하고 7개 자치구 행정동 단위 산출을 준비 중이다. 분석은 전국(Tier1·공공데이터)과 거점도시(Tier2·고해상도) 이원 체계로 간다."
+  stages:
+    - label: "가. 실태조사"
+      status: 완료
+      summary: "9개국 도시숲 정책 비교 + K-TES 설계방향 착수보고"
+      period: "2026-03~04"
+      steps:
+        - { text: "WHO/UNECE 수관피복 권고·3-30-300 규칙 정리", status: 완료 }
+        - { text: "9개국 도시숲 정책·지표 비교 분석", status: 완료 }
+        - { text: "K-TES 설계방향(글로벌 스탠다드+한국 가점) 착수보고", status: 완료 }
+        - { text: "Tier2 대상 4개 광역시(서울·인천·대전·부산) 확정", status: 완료 }
+    - label: "나. 지표개발"
+      status: 진행
+      summary: "K-TES(GAPScore×KEI) 설계 + 수관탐지·NDVI 데이터 구축"
+      period: "2026-05~08"
+      steps:
+        - { text: "한국형 3-30-300 기준 확정(층수별 버퍼 30/55/100m, 사적녹지·300m 네트워크)", status: 완료 }
+        - { text: "분석 단위 확장 — 7개 자치구 내 모든 행정동에 K-TES 산출 확정", status: 완료 }
+        - { text: "수관탐지 최종 모델 LocateAnything v8 채택(이상치는 사람 2단계 검토)", status: 완료 }
+        - { text: "산림청 가로수 데이터 수령 → DeepForest 파인튜닝", status: 진행 }
+        - { text: "7개 자치구 행정동 단위 LocateAnything·SAM 실행 + 중간보고 산출물", status: 다음주 }
+        - { text: "누락 정사영상 2,158건 리스트 정리 후 기관에 공식 재요청", status: 다음주 }
+        - { text: "K-TES 정규화 범위(자치구 내 vs 7개 통합) 결정 — 6/23 회의 안건", status: 다음주 }
+        - { text: "Sentinel-2 NDVI 파이프라인 구축(5~10월 합성·구름처리·마스킹)", status: 예정 }
+        - { text: "8/31까지 KEI·K-TES 핵심 값 산출 완료", status: 예정 }
+    - label: "다. 전략마련"
+      status: 예정
+      summary: "K-TES 지도화 → 우선 조성 대상지 도출 + 구도심 식재전략"
+      period: "2026-09~11"
+      steps:
+        - { text: "전국(Tier1)·거점도시(Tier2) 3-30-300 지표 산정 및 K-TES 지도화", status: 예정 }
+        - { text: "A/B/C Zone 분류로 우선 조성 대상지 도출", status: 예정 }
+        - { text: "구도심 식재 가능 공간(가로·유휴부지·공공건축물) 식재 시뮬레이션", status: 예정 }
+    - label: "라. 기타 (심포지엄·납품)"
+      status: 예정
+      summary: "산림청 주관 심포지엄 + 최종 산출물 납품"
+      period: "2026-10~12"
+      steps:
+        - { text: "산림청 주관 심포지엄(중간보고회) 대비 — 9~10월경", status: 예정 }
+        - { text: "최종 산출물 납품 — 11/30", status: 예정 }
+        - { text: "과업 공식 종료 — 12/01", status: 예정 }
 events:
   - { date: 2026-03-13, label: 입찰공고서 발행, type: 마일스톤, status: 완료 }
   - { date: 2026-03-16, label: 과업지시서 확정, type: 마일스톤, status: 완료 }

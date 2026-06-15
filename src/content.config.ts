@@ -14,6 +14,9 @@ const flexDate = z.preprocess((v) => {
   return v;
 }, z.string());
 
+// 흐름도 단계 상태: 완료 / 진행(현재) / 다음주(다음 주 업무) / 예정(향후 계획)
+const flowState = z.enum(['완료', '진행', '다음주', '예정']);
+
 // 편집 대상 콘텐츠는 ./content/projects/*.md 에 둔다 (Obsidian에서 편집하기 쉬운 위치).
 const projects = defineCollection({
   loader: glob({ pattern: '*.md', base: './content/projects' }),

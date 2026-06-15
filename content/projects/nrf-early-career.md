@@ -44,6 +44,44 @@ next_tasks:
   - { task: "연구3: 지도 범례 통일·고찰 작성 → 투고 + AAG 발표" }
   - { task: "연구5: 노인 보행 접근성 재계산·Enhanced 2SFCA·형평성 분석 → 투고" }
   - { task: 2026-02 이후 진행분으로 현황(진척·일정) 갱신 }
+flow:
+  note: "신진연구(2025.03~2027.02)는 G2SFCA/3SFCA 접근성 방법론을 축으로 하위 3개 연구(연구1 PSM-DID·연구3 매력도 3SFCA·연구5 노인 대중교통)와 방법론 정리(2SFCA 논문)가 병행되는 구조다. 2차년도(2026.03~)에 진입해 연구1 ~70%·연구3 ~58%·연구5 ~35%로, 연구5는 AAG 발표 후 저널 제출 진행 중이고 연구1·연구3은 2026 상반기(6월) 저널 투고를 앞둔 단계다. ※ 이 노트는 2026-02까지가 최신이라 진척·일정은 추정이다."
+  stages:
+    - label: "연구1 — 재개발 시계열 접근성 (PSM-DID)"
+      status: 진행
+      summary: "DID·공간 Placebo 완료, PSM·민감도 보완 후 상반기 투고"
+      period: "2025-11~2026-06"
+      steps:
+        - { text: "초고 검토 — DB 구축·통계 결과·역쌍곡사인 변환·공원녹지 증감 변수 논의", status: 완료 }
+        - { text: "PSM-DID 모형 확정 — 2019 PT 검증·1:3 NN 매칭(caliper 0.2)·3시점(2014·2019·2024)", status: 완료 }
+        - { text: "피어리뷰 대응 점검 — 시간적 Placebo 해석 오류·PSM/민감도 미수행 지적", status: 완료 }
+        - { text: "PSM·R&R·Bad control 민감도 분석 수행", status: 진행 }
+        - { text: "연구1 저널 투고 (2026 상반기)", status: 다음주 }
+    - label: "연구3 — 매력도 기반 Multi-modal 3SFCA"
+      status: 진행
+      summary: "3SFCA 프레임워크·초고 완료, 범례 통일·고찰 후 투고+AAG"
+      period: "2026-01~2026-06"
+      steps:
+        - { text: "3SFCA 프레임워크 미팅 — 교통수단별 가중치(도보 0.353·대중교통 0.404·자가용 0.137)", status: 완료 }
+        - { text: "시각화 검토 — 동일구간·z-score 기준으로 범례 통일, 면적 vs 매력도 동일척도 비교", status: 완료 }
+        - { text: "manuscript 최신본 정리", status: 완료 }
+        - { text: "교통수단별 접근성 지도 범례 통일 재작성 + 고찰·결론 초고", status: 진행 }
+        - { text: "연구3 저널 투고 (2026 상반기)", status: 다음주 }
+    - label: "연구5 — 노인 대중교통 접근성 (Aging in Place)"
+      status: 진행
+      summary: "T-Map 데이터 구축, Enhanced 2SFCA·형평성 분석 후 제출"
+      period: "2026-03~2026-04"
+      steps:
+        - { text: "T-Map API 대중교통 데이터 구축", status: 완료 }
+        - { text: "AAG 학회 발표 (연구3·연구5)", status: 완료 }
+        - { text: "노인 보행 접근성 재계산·Enhanced 2SFCA·형평성 분석", status: 진행 }
+        - { text: "연구5 저널 제출 (목표)", status: 예정 }
+    - label: "2SFCA 방법론 논문"
+      status: 진행
+      summary: "G2SFCA/3SFCA 방법론 문헌 정리 (연구3·5 근거)"
+      period: "2025~2026"
+      steps:
+        - { text: "G2SFCA/3SFCA 방법론 문헌 정리 (연구3·5 근거)", status: 진행 }
 events:
   - { date: 2025-11-26, label: 연구1 초고 검토, type: 회의, status: 완료 }
   - { date: 2025-12-18, label: 연구1 PSM-DID 모형 확정, type: 회의, status: 완료 }

@@ -2,6 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import StatusBadge from '../../components/StatusBadge.astro';
 import Timeline from '../../components/Timeline.astro';
+import FlowDiagram from '../../components/FlowDiagram.astro';
 import { getProjects, getSynergy } from '../../lib/content';
 import { fmtRange, fmtDate, dday, fmtDday, parseDate, today } from '../../lib/dates';
 
@@ -118,6 +119,11 @@ const typeColor: Record<string, string> = {
         </div>
       ))}
     </section>
+  )}
+
+  <!-- 연구 흐름도 -->
+  {p.flow && p.flow.stages && p.flow.stages.length > 0 && (
+    <FlowDiagram flow={p.flow} color={p.color} />
   )}
 
   <!-- 타임라인 -->
