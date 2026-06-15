@@ -30,3 +30,6 @@ Thumbs.db
 scripts/daily-curate-prompt.md
 scripts/daily-curate.ps1
 scripts/daily-curate.log
+
+# bkit 플러그인 런타임 (헤드리스 claude 실행 시 생성, 공개 repo에 불필요)
+.bkit/
