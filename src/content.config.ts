@@ -33,6 +33,8 @@ const projects = defineCollection({
     team: z.array(z.string()).default([]),    // 참여진
     summary: z.string().optional(),           // 카드/메타 한 줄 요약
     purpose: z.string().optional(),           // 우리 팀의 목적/목표
+    link: z.string().url().optional(),        // 관련 외부 사이트(가이드 등)
+    link_label: z.string().optional(),        // 외부 링크 버튼 라벨
     current_stage: z.string().optional(),     // 현재 진행 단계
     highlights: z
       .array(z.object({ label: z.string(), items: z.array(z.string()).default([]), note: z.string().optional() }))

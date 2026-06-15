@@ -65,6 +65,15 @@ const typeColor: Record<string, string> = {
       {p.pi && <div><dt class="text-xs text-[var(--muted)]">연구책임자</dt><dd class="font-semibold text-slate-700">{p.pi}</dd></div>}
     </dl>
 
+    {p.link && (
+      <a href={p.link} target="_blank" rel="noopener noreferrer"
+         class="mt-4 inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+         style={`background:${p.color}`}>
+        {p.link_label ?? '관련 사이트'}
+        <span aria-hidden="true">↗</span>
+      </a>
+    )}
+
     <div class="mt-5">
       <div class="mb-1 flex items-center justify-between text-xs">
         <span class="font-medium text-slate-500">진척도</span>
