@@ -1,7 +1,7 @@
 ---
-// 연구 흐름도 v2 — 수직 파이프라인(진행 스파인) + 상단 진행 스테퍼.
-// 모든 step을 펼쳐 보여주고(클릭 불필요), 색·크기로 중요도 위계를 표현하며,
-// "현재 어느 단계까지 왔는지"를 스테퍼·스파인·스포트라이트로 한눈에 보여준다.
+// 연구 흐름도 v3 — 위→아래 세로 흐름. 좌측: 단계 다이어그램(스파인+노드+단계명),
+// 우측: 각 단계의 세부 작업 리스트. 모든 step을 펼쳐 보여주고 색으로 중요도 위계를 표현하며,
+// 세로 진행 스파인이 현재 단계까지 채워져 "어디까지 왔는지"를 위→아래로 보여준다.
 // 데이터는 각 과제 .md frontmatter `flow:` (회의록·결정사항 따라 갱신).
 interface Step { text: string; status: string; }
 interface Stage { label: string; status: string; summary?: string; period?: string; icon?: string; steps: Step[]; }
@@ -11,7 +11,6 @@ const { flow, color, progress } = Astro.props;
 const stages = flow.stages ?? [];
 const N = stages.length;
 
-// 단계 상태 → 시각 클래스 / 라벨
 const stageState: Record<string, { cls: string; badge: string }> = {
   '완료':   { cls: 'is-done',    badge: '완료' },
   '진행':   { cls: 'is-current', badge: '진행 중' },
@@ -20,7 +19,6 @@ const stageState: Record<string, { cls: string; badge: string }> = {
 };
 const ss = (s: string) => stageState[s] ?? stageState['예정'];
 
-// step 상태 → 클래스 / 마크 / 칩
 const stepState: Record<string, { cls: string; mark: string; chip: string | null }> = {
   '완료':   { cls: 's-done', mark: '✓', chip: null },
   '진행':   { cls: 's-prog', mark: '●', chip: '진행' },
@@ -57,11 +55,10 @@ const guessIcon = (label: string) => {
 // 진행 위치 계산
 const idxProgress = stages.map((s, i) => (s.status === '진행' ? i : -1)).filter((i) => i >= 0);
 const idxStarted = stages.map((s, i) => (s.status !== '예정' ? i : -1)).filter((i) => i >= 0);
-const frontierIndex = idxStarted.length ? Math.max(...idxStarted) : -1;       // 가장 멀리 진행된 단계
-const spotlightIndex = idxProgress.length === 1 ? idxProgress[0] : -1;          // 단일 '진행'이면 스포트라이트
+const frontierIndex = idxStarted.length ? Math.max(...idxStarted) : -1;
+const spotlightIndex = idxProgress.length === 1 ? idxProgress[0] : -1;
 const allDone = N > 0 && stages.every((s) => s.status === '완료');
 
-// 상단 위치 텍스트
 let posText: string;
 if (allDone) posText = '전 단계 완료';
 else if (idxProgress.length > 1) posText = `${N}단계 중 ${idxProgress.length}개 동시 진행`;
@@ -70,47 +67,27 @@ else {
   posText = cur >= 0 ? `${N}단계 중 ${cur + 1}단계` : `총 ${N}단계`;
 }
 const hasProgress = typeof progress === 'number';
-
-// 스테퍼: 짧은 라벨(앞부분), 상태 클래스
-const shortLabel = (l: string) => l.replace(/\s*\(.+?\)\s*$/, '').trim();
 ---
 <section id="flow" class="fd-root" style={`--accent:${color}`}>
-  <!-- 상단 요약 + 진행 스테퍼 -->
+  <!-- 상단 요약 -->
   <div class="fd-summary">
-    <div class="fd-summary-top">
-      <div>
-        <h2 class="fd-h1">연구 흐름도</h2>
-        <p class="fd-sub">{stages.map((s) => shortLabel(s.label)).join(' → ')}</p>
-      </div>
-      <div class="fd-metrics">
-        {hasProgress && (
-          <div class="fd-metric"><div class="fd-v fd-green">{progress}%</div><div class="fd-l">전체 진척도</div></div>
-        )}
-        <div class="fd-metric"><div class="fd-v">{posText}</div><div class="fd-l">현재 진행 위치</div></div>
-      </div>
+    <div>
+      <h2 class="fd-h1">연구 흐름도</h2>
+      <p class="fd-sub">위 → 아래 단계 흐름 · 각 단계의 세부 작업은 오른쪽에 정리됩니다</p>
     </div>
-
+    <div class="fd-metrics">
+      {hasProgress && (
+        <div class="fd-metric"><div class="fd-v fd-green">{progress}%</div><div class="fd-l">전체 진척도</div></div>
+      )}
+      <div class="fd-metric"><div class="fd-v">{posText}</div><div class="fd-l">현재 진행 위치</div></div>
+    </div>
     {hasProgress && (
       <div class="fd-progress-track"><div class="fd-progress-fill" style={`--p:${progress}%`}></div></div>
     )}
-
-    <div class="fd-stepper" role="list" aria-label="단계 진행 상태">
-      {stages.map((s, i) => (
-        <>
-          {i > 0 && <div class={`fd-bar ${stages[i - 1].status !== '예정' ? 'done' : ''}`}></div>}
-          <button type="button" class="fd-step-node" data-goto={i} role="listitem" title={s.label}>
-            <span class={`fd-dot ${s.status === '완료' ? 'done' : s.status === '진행' ? 'current' : s.status === '다음주' ? 'next' : 'future'}`}>
-              {s.status === '완료' ? '✓' : i + 1}
-            </span>
-            <span class={`fd-steplab ${s.status === '진행' ? 'cur' : ''}`}>{shortLabel(s.label)}</span>
-          </button>
-        </>
-      ))}
-    </div>
   </div>
 
-  <!-- 수직 파이프라인 -->
-  <div class="fd-pipeline">
+  <!-- 세로 흐름: 좌(다이어그램) · 우(세부 리스트) -->
+  <div class="fd-flow">
     <div class="fd-spine"></div>
     {stages.map((s, i) => {
       const st = ss(s.status);
@@ -118,19 +95,27 @@ const shortLabel = (l: string) => l.replace(/\s*\(.+?\)\s*$/, '').trim();
       const ic = s.icon ?? guessIcon(s.label);
       return (
         <section class={`fd-stage ${st.cls} ${spotlight ? 'is-spotlight' : ''}`} data-frontier={i === frontierIndex ? '1' : undefined}>
+          <!-- 노드(스파인 위) -->
           <div class="fd-node-circle">
             {ic ? <span class="fd-node-ic">{ic}</span> : <span class="fd-node-n">{i + 1}</span>}
             <span class="fd-badge-num">{i + 1}</span>
           </div>
-          <div class="fd-card">
+
+          <!-- 좌측: 단계 다이어그램 -->
+          <div class="fd-diagram">
             {spotlight && <span class="fd-ribbon"><span class="fd-rdot"></span>현재 진행 중</span>}
-            <div class="fd-card-head">
-              <h3 class="fd-card-title">{s.label}</h3>
+            <h3 class="fd-title">{s.label}</h3>
+            <div class="fd-meta">
               <span class={`fd-status-badge ${st.cls}`}>{st.badge}</span>
               {s.period && <span class="fd-period">{s.period}</span>}
             </div>
-            {s.summary && <p class="fd-card-summary">{s.summary}</p>}
-            {s.steps.length > 0 && (
+            {s.summary && <p class="fd-summary-line">{s.summary}</p>}
+            <span class="fd-count">세부 {s.steps.length}건</span>
+          </div>
+
+          <!-- 우측: 세부 작업 리스트 -->
+          <div class="fd-detail">
+            {s.steps.length > 0 ? (
               <ul class="fd-steps">
                 {s.steps.map((step) => {
                   const t = sp(step.status);
@@ -143,6 +128,8 @@ const shortLabel = (l: string) => l.replace(/\s*\(.+?\)\s*$/, '').trim();
                   );
                 })}
               </ul>
+            ) : (
+              <p class="fd-empty">세부 작업이 아직 정리되지 않았습니다.</p>
             )}
           </div>
         </section>
@@ -162,7 +149,7 @@ const shortLabel = (l: string) => l.replace(/\s*\(.+?\)\s*$/, '').trim();
       <span class="fd-note-ic">🧭</span>
       <span>
         {flow.note && <><b>{flow.note}</b><br /></>}
-        위 <b>진행 스테퍼·세로 진행선</b>으로 지금 어느 단계까지 왔는지 한눈에 볼 수 있고, 각 단계 카드에 세부 작업이 색상별 중요도(<span class="fd-ink-done">완료</span>·<span class="fd-ink-now">진행</span>·<span class="fd-ink-next">다음주</span>·<span class="fd-ink-plan">예정</span>)로 표시됩니다. 회의록·결정사항에 따라 frontmatter <code>flow:</code> 를 수정하면 갱신됩니다.
+        <b>왼쪽 다이어그램</b>이 위에서 아래로 단계 흐름을, <b>오른쪽 리스트</b>가 각 단계의 세부 작업을 보여줍니다. 세로 진행선은 현재 단계까지 채워져 진행 위치를, 색은 중요도(<span class="fd-ink-done">완료</span>·<span class="fd-ink-now">진행</span>·<span class="fd-ink-next">다음주</span>·<span class="fd-ink-plan">예정</span>)를 나타냅니다. 회의록·결정사항에 따라 frontmatter <code>flow:</code> 를 수정하면 갱신됩니다.
       </span>
     </p>
   </footer>
@@ -182,54 +169,39 @@ const shortLabel = (l: string) => l.replace(/\s*\(.+?\)\s*$/, '').trim();
   /* 상단 요약 */
   .fd-summary{
     background:var(--card); border:1px solid var(--line); border-top:3px solid var(--accent);
-    border-radius:var(--radius); padding:24px 28px 22px;
+    border-radius:var(--radius); padding:22px 26px;
+    display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:16px;
   }
-  .fd-summary-top{ display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:16px; }
   .fd-h1{ font-size:22px; font-weight:800; letter-spacing:-.02em; margin:0 0 4px; }
-  .fd-sub{ color:var(--muted); font-size:13.5px; font-weight:500; margin:0; }
+  .fd-sub{ color:var(--muted); font-size:13px; font-weight:500; margin:0; }
   .fd-metrics{ display:flex; gap:12px; }
   .fd-metric{ background:#fff; border:1px solid var(--line); border-radius:13px; padding:10px 16px; text-align:center; min-width:104px; }
   .fd-v{ font-size:17px; font-weight:800; letter-spacing:-.01em; color:var(--now); line-height:1.15; }
   .fd-v.fd-green{ color:var(--done); font-size:24px; }
   .fd-l{ font-size:11.5px; color:var(--muted); margin-top:3px; font-weight:600; }
-
-  .fd-progress-track{ position:relative; height:10px; background:#eef0f5; border-radius:999px; overflow:hidden; margin-top:20px; }
+  .fd-progress-track{ position:relative; height:9px; background:#eef0f5; border-radius:999px; overflow:hidden; flex:1 1 100%; margin-top:4px; }
   .fd-progress-fill{ position:absolute; inset:0 auto 0 0; width:var(--p,0%); border-radius:999px;
     background:linear-gradient(90deg,var(--done) 0%,var(--done) 55%,var(--now) 100%); animation:fdFill 1.4s cubic-bezier(.22,1,.36,1) both; }
   @keyframes fdFill{ from{ width:0; } }
 
-  /* 진행 스테퍼 */
-  .fd-stepper{ display:flex; align-items:flex-start; gap:0; margin-top:22px; overflow-x:auto; padding-bottom:4px; }
-  .fd-stepper::-webkit-scrollbar{ height:6px; } .fd-stepper::-webkit-scrollbar-thumb{ background:#d2d6df; border-radius:6px; }
-  .fd-step-node{ display:flex; flex-direction:column; align-items:center; gap:7px; flex:0 0 auto; background:none; border:none; cursor:pointer; padding:0 2px; font-family:inherit; }
-  .fd-dot{ width:38px; height:38px; border-radius:50%; display:grid; place-items:center; font-size:14px; font-weight:800; color:#fff; border:3px solid #fff; box-shadow:0 0 0 1px var(--line); transition:transform .2s; }
-  .fd-step-node:hover .fd-dot{ transform:scale(1.08); }
-  .fd-dot.done{ background:var(--done); }
-  .fd-dot.current{ width:44px; height:44px; font-size:16px; background:var(--now); box-shadow:0 0 0 1px var(--now-line),0 0 0 6px var(--now-glow); animation:fdPulse 2.2s ease-in-out infinite; }
-  .fd-dot.next{ background:var(--next); }
-  .fd-dot.future{ background:#cbd2dd; }
-  .fd-steplab{ font-size:11.5px; font-weight:700; color:var(--muted); white-space:nowrap; max-width:130px; overflow:hidden; text-overflow:ellipsis; }
-  .fd-steplab.cur{ color:var(--now); }
-  .fd-bar{ height:3px; flex:1 1 auto; min-width:28px; background:var(--plan-line); margin:19px 4px 0; border-radius:2px; }
-  .fd-bar.done{ background:linear-gradient(90deg,var(--done),var(--now)); }
-
-  /* 파이프라인 */
-  .fd-pipeline{ position:relative; padding-left:74px; margin-top:30px; }
-  .fd-spine{ position:absolute; left:33px; top:20px; bottom:20px; width:4px; border-radius:4px;
+  /* 세로 흐름 컨테이너 */
+  .fd-flow{ position:relative; padding-left:76px; margin-top:30px; }
+  .fd-spine{ position:absolute; left:33px; top:26px; bottom:30px; width:4px; border-radius:4px;
     background:repeating-linear-gradient(to bottom,var(--plan-line) 0 8px,transparent 8px 16px); }
   .fd-spine::before{ content:""; position:absolute; left:0; top:0; width:100%; height:var(--fill,0px); border-radius:4px;
     background:linear-gradient(180deg,var(--done) 0%,var(--done) 60%,var(--now) 100%); transition:height .9s cubic-bezier(.22,1,.36,1); }
   .fd-spine::after{ content:""; position:absolute; left:-3px; width:10px; height:10px; border-radius:50%; background:var(--now);
     box-shadow:0 0 0 5px var(--now-glow); top:var(--fill,0px); transform:translateY(-50%); opacity:var(--fillop,0); animation:fdPulse 2.2s ease-in-out infinite; }
 
-  .fd-stage{ position:relative; margin-bottom:28px; }
+  /* 단계 행: 좌(다이어그램) · 우(세부) */
+  .fd-stage{ position:relative; display:grid; grid-template-columns:minmax(210px,290px) minmax(0,1fr); gap:0 26px; align-items:start; margin-bottom:24px; }
   .fd-stage:last-child{ margin-bottom:0; }
 
-  .fd-node-circle{ position:absolute; left:-74px; top:22px; width:58px; height:58px; border-radius:50%; display:grid; place-items:center;
-    background:var(--card); border:3px solid var(--plan-line); font-size:24px; z-index:2; }
-  .fd-node-n{ font-size:22px; font-weight:800; color:var(--plan); }
-  .fd-badge-num{ position:absolute; bottom:-7px; right:-7px; width:23px; height:23px; border-radius:50%; background:var(--plan); color:#fff;
-    font-size:12px; font-weight:800; display:grid; place-items:center; border:2px solid var(--card); }
+  .fd-node-circle{ position:absolute; left:-76px; top:0; width:56px; height:56px; border-radius:50%; display:grid; place-items:center;
+    background:var(--card); border:3px solid var(--plan-line); font-size:23px; z-index:2; }
+  .fd-node-n{ font-size:21px; font-weight:800; color:var(--plan); }
+  .fd-badge-num{ position:absolute; bottom:-7px; right:-7px; width:22px; height:22px; border-radius:50%; background:var(--plan); color:#fff;
+    font-size:11.5px; font-weight:800; display:grid; place-items:center; border:2px solid var(--card); }
   .fd-stage.is-done .fd-node-circle{ border-color:var(--done-line); background:var(--done-soft); }
   .fd-stage.is-done .fd-badge-num{ background:var(--done); }
   .fd-stage.is-current .fd-node-circle{ border-color:var(--now); background:var(--now-soft); }
@@ -239,38 +211,40 @@ const shortLabel = (l: string) => l.replace(/\s*\(.+?\)\s*$/, '').trim();
   .fd-stage.is-next .fd-badge-num{ background:var(--next); }
   .fd-stage.is-spotlight .fd-node-circle{ box-shadow:0 0 0 6px var(--now-glow); animation:fdPulse 2.2s ease-in-out infinite; transform:scale(1.08); }
 
-  /* 카드 */
-  .fd-card{ background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:20px 24px; position:relative; }
-  .fd-stage.is-done .fd-card{ opacity:.93; }
-  .fd-stage.is-next .fd-card{ border-color:var(--next-line); background:linear-gradient(0deg,#fff,var(--next-soft)); }
-  .fd-stage.is-plan .fd-card{ background:var(--plan-soft); border-style:dashed; border-color:var(--plan-line); opacity:.9; }
-  .fd-stage.is-spotlight .fd-card{ border:2px solid var(--now); box-shadow:0 0 0 5px var(--now-glow),0 18px 40px -18px rgba(37,99,235,.42);
-    animation:fdCardGlow 3.6s ease-in-out infinite; }
-  @keyframes fdCardGlow{ 0%,100%{ box-shadow:0 0 0 5px var(--now-glow),0 16px 34px -18px rgba(37,99,235,.38); } 50%{ box-shadow:0 0 0 8px rgba(37,99,235,.10),0 22px 46px -16px rgba(37,99,235,.5); } }
-
-  .fd-ribbon{ position:absolute; top:-13px; left:22px; background:var(--now); color:#fff; font-size:11.5px; font-weight:800;
-    padding:4px 13px; border-radius:999px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 12px -2px var(--now-glow); }
+  /* 좌: 다이어그램 셀 */
+  .fd-diagram{ padding-top:2px; }
+  .fd-ribbon{ display:inline-flex; align-items:center; gap:6px; background:var(--now); color:#fff; font-size:11px; font-weight:800;
+    padding:3px 11px; border-radius:999px; margin-bottom:8px; box-shadow:0 4px 12px -2px var(--now-glow); }
   .fd-rdot{ width:6px; height:6px; border-radius:50%; background:#fff; animation:fdBlink 1.4s ease-in-out infinite; }
   @keyframes fdBlink{ 0%,100%{ opacity:.4; } 50%{ opacity:1; } }
-
-  .fd-card-head{ display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
-  .fd-stage.is-spotlight .fd-card-head{ margin-top:5px; }
-  .fd-card-title{ font-size:20px; font-weight:800; letter-spacing:-.02em; margin:0; }
-  .fd-stage.is-plan .fd-card-title{ color:#4b5563; }
+  .fd-title{ font-size:18.5px; font-weight:800; letter-spacing:-.02em; margin:0; line-height:1.3; }
+  .fd-stage.is-current .fd-title{ color:#1e3a8a; }
+  .fd-stage.is-plan .fd-title{ color:#4b5563; }
+  .fd-meta{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:8px; }
   .fd-status-badge{ font-size:11.5px; font-weight:800; padding:3px 11px; border-radius:999px; }
   .fd-status-badge.is-done{ background:var(--done-soft); color:#047857; border:1px solid var(--done-line); }
   .fd-status-badge.is-current{ background:var(--now); color:#fff; }
   .fd-status-badge.is-next{ background:var(--next-soft); color:#92400e; border:1px solid var(--next-line); }
   .fd-status-badge.is-plan{ background:#eef1f6; color:#64748b; border:1px solid var(--plan-line); }
-  .fd-period{ margin-left:auto; font-size:12.5px; font-weight:600; color:var(--muted); font-variant-numeric:tabular-nums; }
-  .fd-card-summary{ font-size:14px; color:#3b414d; font-weight:500; margin:8px 0 16px; }
-  .fd-stage.is-spotlight .fd-card-summary{ color:#1e3a8a; font-weight:600; }
+  .fd-period{ font-size:12.5px; font-weight:600; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .fd-summary-line{ font-size:13px; color:#4b5563; font-weight:500; margin:10px 0 0; line-height:1.5; }
+  .fd-stage.is-current .fd-summary-line{ color:#1e3a8a; font-weight:600; }
+  .fd-count{ display:inline-block; margin-top:10px; font-size:11px; font-weight:700; color:var(--muted); background:#f1f3f7; padding:2px 9px; border-radius:999px; }
 
-  .fd-steps{ list-style:none; margin:0; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:8px 16px; }
-  .fd-step{ display:flex; align-items:flex-start; gap:9px; font-size:13.5px; padding:6px 10px; border-radius:9px; line-height:1.4; }
-  .fd-mark{ flex:0 0 auto; margin-top:1px; width:17px; height:17px; border-radius:50%; display:grid; place-items:center; font-size:10.5px; font-weight:800; line-height:1; }
+  /* 우: 세부 리스트 카드 */
+  .fd-detail{ background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 16px; }
+  .fd-stage.is-done .fd-detail{ opacity:.94; }
+  .fd-stage.is-next .fd-detail{ border-color:var(--next-line); background:linear-gradient(0deg,#fff,var(--next-soft)); }
+  .fd-stage.is-plan .fd-detail{ background:var(--plan-soft); border-style:dashed; border-color:var(--plan-line); opacity:.92; }
+  .fd-stage.is-spotlight .fd-detail{ border:2px solid var(--now); box-shadow:0 0 0 5px var(--now-glow),0 18px 40px -18px rgba(37,99,235,.42);
+    animation:fdCardGlow 3.6s ease-in-out infinite; }
+  @keyframes fdCardGlow{ 0%,100%{ box-shadow:0 0 0 5px var(--now-glow),0 16px 34px -18px rgba(37,99,235,.38); } 50%{ box-shadow:0 0 0 8px rgba(37,99,235,.10),0 22px 46px -16px rgba(37,99,235,.5); } }
+
+  .fd-steps{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; }
+  .fd-step{ display:flex; align-items:flex-start; gap:10px; font-size:13.5px; padding:7px 11px; border-radius:9px; line-height:1.45; }
+  .fd-mark{ flex:0 0 auto; margin-top:1px; width:18px; height:18px; border-radius:50%; display:grid; place-items:center; font-size:11px; font-weight:800; line-height:1; }
   .fd-txt{ flex:1 1 auto; }
-  .fd-chip{ flex:0 0 auto; font-size:10px; font-weight:800; padding:1px 7px; border-radius:999px; align-self:center; }
+  .fd-chip{ flex:0 0 auto; font-size:10px; font-weight:800; padding:1px 8px; border-radius:999px; align-self:center; }
   .fd-step.s-done{ color:#7b8494; }
   .fd-step.s-done .fd-mark{ background:var(--done); color:#fff; }
   .fd-step.s-prog{ background:var(--now-soft); color:#1e3a8a; font-weight:700; }
@@ -282,11 +256,12 @@ const shortLabel = (l: string) => l.replace(/\s*\(.+?\)\s*$/, '').trim();
   .fd-step.s-plan{ color:#94a3b8; }
   .fd-step.s-plan .fd-mark{ background:transparent; border:1.5px dashed #cbd2dd; color:#cbd2dd; }
   .fd-step.s-plan .fd-chip{ background:#eef1f6; color:#94a3b8; }
+  .fd-empty{ font-size:13px; color:var(--muted); margin:4px 0; }
 
   @keyframes fdPulse{ 0%,100%{ box-shadow:0 0 0 5px var(--now-glow); } 50%{ box-shadow:0 0 0 9px rgba(37,99,235,.04); } }
 
   /* 범례 + 설명 */
-  .fd-footer{ margin-top:32px; background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:20px 24px; }
+  .fd-footer{ margin-top:30px; background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:20px 24px; }
   .fd-legend{ display:flex; flex-wrap:wrap; gap:14px 24px; align-items:center; padding-bottom:16px; border-bottom:1px solid var(--line); }
   .fd-li{ display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; color:#3b414d; }
   .fd-li em{ color:var(--muted); font-style:normal; font-weight:500; }
@@ -300,53 +275,32 @@ const shortLabel = (l: string) => l.replace(/\s*\(.+?\)\s*$/, '').trim();
   .fd-ink-done{ color:#047857; font-weight:700; } .fd-ink-now{ color:var(--now); font-weight:700; }
   .fd-ink-next{ color:#b45309; font-weight:700; } .fd-ink-plan{ color:#64748b; font-weight:700; }
 
-  /* 반응형 */
-  @media (max-width:760px){
-    .fd-steps{ grid-template-columns:1fr; }
-    .fd-pipeline{ padding-left:54px; }
+  /* 반응형: 좁으면 다이어그램 위, 세부 아래로 스택 */
+  @media (max-width:820px){
+    .fd-stage{ grid-template-columns:1fr; gap:12px; }
+    .fd-flow{ padding-left:54px; }
     .fd-spine{ left:23px; }
-    .fd-node-circle{ left:-54px; width:46px; height:46px; font-size:19px; top:18px; }
-    .fd-card-title{ font-size:18px; }
-    .fd-summary{ padding:20px 18px; }
+    .fd-node-circle{ left:-54px; width:44px; height:44px; font-size:18px; }
   }
-  @media (prefers-reduced-motion:reduce){
-    .fd-root *{ animation:none !important; }
-  }
+  @media (prefers-reduced-motion:reduce){ .fd-root *{ animation:none !important; } }
 </style>
 
 <script>
   (function () {
-    const sections = document.querySelectorAll('.fd-root');
-    sections.forEach((root) => {
+    document.querySelectorAll('.fd-root').forEach((root) => {
       const spine = root.querySelector('.fd-spine');
       const frontier = root.querySelector('.fd-stage[data-frontier="1"]');
-      const pipeline = root.querySelector('.fd-pipeline');
       const setFill = () => {
-        if (!spine || !pipeline) return;
+        if (!spine) return;
         if (!frontier) { spine.style.setProperty('--fill', '0px'); spine.style.setProperty('--fillop', '0'); return; }
         const node = frontier.querySelector('.fd-node-circle');
         if (!node) return;
-        const pTop = pipeline.getBoundingClientRect().top;
-        const sTop = 20; // .fd-spine top offset
-        const nRect = node.getBoundingClientRect();
-        const center = (nRect.top - pTop) + nRect.height / 2;
-        const fill = Math.max(0, center - sTop);
+        const sTop = spine.getBoundingClientRect().top;
+        const nr = node.getBoundingClientRect();
+        const fill = Math.max(0, (nr.top + nr.height / 2) - sTop);
         spine.style.setProperty('--fill', fill + 'px');
         spine.style.setProperty('--fillop', '1');
       };
-      // 스테퍼 클릭 → 해당 단계 카드로 스크롤
-      root.querySelectorAll('[data-goto]').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          const i = btn.getAttribute('data-goto');
-          const cards = root.querySelectorAll('.fd-stage');
-          const target = cards[Number(i)];
-          if (target) {
-            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            const card = target.querySelector('.fd-card');
-            if (card) { card.animate([{ outlineColor: 'rgba(37,99,235,.6)' }, { outlineColor: 'rgba(37,99,235,0)' }], { duration: 1400 }); }
-          }
-        });
-      });
       setFill();
       window.addEventListener('load', setFill);
       let t; window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(setFill, 150); });
