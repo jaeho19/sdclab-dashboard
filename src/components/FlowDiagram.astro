@@ -1,130 +1,355 @@
 ---
-// 연구 흐름도 — 단계 레일(거시) + 클릭 시 펼쳐지는 세부 아코디언.
-// 데이터는 각 과제 .md 의 frontmatter `flow:` 에서 옵니다(회의록·결정사항 따라 갱신).
+// 연구 흐름도 v2 — 수직 파이프라인(진행 스파인) + 상단 진행 스테퍼.
+// 모든 step을 펼쳐 보여주고(클릭 불필요), 색·크기로 중요도 위계를 표현하며,
+// "현재 어느 단계까지 왔는지"를 스테퍼·스파인·스포트라이트로 한눈에 보여준다.
+// 데이터는 각 과제 .md frontmatter `flow:` (회의록·결정사항 따라 갱신).
 interface Step { text: string; status: string; }
-interface Stage { label: string; status: string; summary?: string; period?: string; steps: Step[]; }
+interface Stage { label: string; status: string; summary?: string; period?: string; icon?: string; steps: Step[]; }
 interface Flow { note?: string; stages: Stage[]; }
-interface Props { flow: Flow; color: string; }
-const { flow, color } = Astro.props;
+interface Props { flow: Flow; color: string; progress?: number; }
+const { flow, color, progress } = Astro.props;
 const stages = flow.stages ?? [];
+const N = stages.length;
 
-// 상태별 스타일 토큰 (4색: 완료·진행·다음주·예정)
-const S: Record<string, { dot: string; chip: string; badge: string; label: string; step: string }> = {
-  '완료':   { dot: 'bg-emerald-500',            chip: 'border-emerald-300 bg-emerald-50',                 badge: 'bg-emerald-100 text-emerald-700',  label: '완료',     step: 'text-emerald-600' },
-  '진행':   { dot: 'bg-blue-500 ring-4 ring-blue-100', chip: 'border-blue-400 bg-blue-50 shadow-sm',     badge: 'bg-blue-100 text-blue-700',        label: '진행 중',  step: 'text-blue-600' },
-  '다음주': { dot: 'bg-amber-500',              chip: 'border-amber-400 bg-amber-50',                     badge: 'bg-amber-100 text-amber-800',      label: '다음 주',  step: 'text-amber-600' },
-  '예정':   { dot: 'border-2 border-slate-300 bg-white', chip: 'border-dashed border-slate-300 bg-white',  badge: 'bg-slate-100 text-slate-500',      label: '예정',     step: 'text-slate-300' },
+// 단계 상태 → 시각 클래스 / 라벨
+const stageState: Record<string, { cls: string; badge: string }> = {
+  '완료':   { cls: 'is-done',    badge: '완료' },
+  '진행':   { cls: 'is-current', badge: '진행 중' },
+  '다음주': { cls: 'is-next',    badge: '다음 단계' },
+  '예정':   { cls: 'is-plan',    badge: '예정' },
 };
-const tok = (s: string) => S[s] ?? S['예정'];
-// 진행 중 단계가 있으면 그 단계, 없으면 다음주, 없으면 첫 미완료 단계를 기본으로 펼침
-const defaultOpen = (() => {
-  const order = ['진행', '다음주', '예정'];
-  for (const st of order) { const i = stages.findIndex((s) => s.status === st); if (i >= 0) return i; }
-  return 0;
-})();
+const ss = (s: string) => stageState[s] ?? stageState['예정'];
+
+// step 상태 → 클래스 / 마크 / 칩
+const stepState: Record<string, { cls: string; mark: string; chip: string | null }> = {
+  '완료':   { cls: 's-done', mark: '✓', chip: null },
+  '진행':   { cls: 's-prog', mark: '●', chip: '진행' },
+  '다음주': { cls: 's-next', mark: '!', chip: '다음주' },
+  '예정':   { cls: 's-plan', mark: '○', chip: '예정' },
+};
+const sp = (s: string) => stepState[s] ?? stepState['예정'];
+
+// 단계 성격 아이콘 추론(명시 icon 우선, 없으면 라벨 키워드, 없으면 번호)
+const ICON_RULES: [RegExp, string][] = [
+  [/실태|현황|조사(?!지)|진단|탐색/, '🔍'],
+  [/착수|자문|협의|kick|킥오프|회의/i, '🤝'],
+  [/지표|설계|모형|프레임워크|방법론|기준/, '📐'],
+  [/데이터|구축|수집|매핑|db|전처리/i, '📊'],
+  [/지도|지도화|매핑|gis|공간/i, '🗺️'],
+  [/전략|방안|계획|로드맵/, '🧭'],
+  [/설문|문항|조사지|ipa/i, '📋'],
+  [/델파이|전문가|패널/, '🗳️'],
+  [/irb|윤리|승인/i, '✅'],
+  [/파일럿|실증|현장|시범/, '🚩'],
+  [/프로토타입|개발|도구|모델|ai|api/i, '🧪'],
+  [/워크숍|주민|참여|교육/, '👥'],
+  [/심포지엄|발표|세미나/, '🎤'],
+  [/보고|중간보고|최종보고/, '📈'],
+  [/납품|종료|제출|투고|논문|완료보고|kci|ssci/i, '📦'],
+  [/검토|검증|리뷰|점검/, '🔎'],
+  [/연구\s*\d|study/i, '🧬'],
+];
+const guessIcon = (label: string) => {
+  for (const [re, ic] of ICON_RULES) if (re.test(label)) return ic;
+  return '';
+};
+
+// 진행 위치 계산
+const idxProgress = stages.map((s, i) => (s.status === '진행' ? i : -1)).filter((i) => i >= 0);
+const idxStarted = stages.map((s, i) => (s.status !== '예정' ? i : -1)).filter((i) => i >= 0);
+const frontierIndex = idxStarted.length ? Math.max(...idxStarted) : -1;       // 가장 멀리 진행된 단계
+const spotlightIndex = idxProgress.length === 1 ? idxProgress[0] : -1;          // 단일 '진행'이면 스포트라이트
+const allDone = N > 0 && stages.every((s) => s.status === '완료');
+
+// 상단 위치 텍스트
+let posText: string;
+if (allDone) posText = '전 단계 완료';
+else if (idxProgress.length > 1) posText = `${N}단계 중 ${idxProgress.length}개 동시 진행`;
+else {
+  const cur = spotlightIndex >= 0 ? spotlightIndex : frontierIndex;
+  posText = cur >= 0 ? `${N}단계 중 ${cur + 1}단계` : `총 ${N}단계`;
+}
+const hasProgress = typeof progress === 'number';
+
+// 스테퍼: 짧은 라벨(앞부분), 상태 클래스
+const shortLabel = (l: string) => l.replace(/\s*\(.+?\)\s*$/, '').trim();
 ---
-<section class="mt-7" id="flow">
-  <div class="mb-3 flex items-end justify-between">
-    <h2 class="text-sm font-bold uppercase tracking-wide text-slate-500">연구 흐름도</h2>
-    <span class="text-[0.72rem] text-[var(--muted)]">단계를 누르면 세부 내용이 펼쳐집니다 ↓</span>
-  </div>
-
-  <div class="rounded-2xl border border-[var(--line)] bg-white p-5" style={`border-top:4px solid ${color}`}>
-    <!-- 범례 -->
-    <div class="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[0.72rem] text-[var(--muted)]">
-      <span class="font-semibold text-slate-500">색상 구분:</span>
-      <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>완료</span>
-      <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-blue-500 ring-2 ring-blue-100"></span>진행 중 <span class="text-slate-400">(현재)</span></span>
-      <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-amber-500"></span>다음 주 업무</span>
-      <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full border-2 border-slate-300 bg-white"></span>예정 <span class="text-slate-400">(향후 계획)</span></span>
+<section id="flow" class="fd-root" style={`--accent:${color}`}>
+  <!-- 상단 요약 + 진행 스테퍼 -->
+  <div class="fd-summary">
+    <div class="fd-summary-top">
+      <div>
+        <h2 class="fd-h1">연구 흐름도</h2>
+        <p class="fd-sub">{stages.map((s) => shortLabel(s.label)).join(' → ')}</p>
+      </div>
+      <div class="fd-metrics">
+        {hasProgress && (
+          <div class="fd-metric"><div class="fd-v fd-green">{progress}%</div><div class="fd-l">전체 진척도</div></div>
+        )}
+        <div class="fd-metric"><div class="fd-v">{posText}</div><div class="fd-l">현재 진행 위치</div></div>
+      </div>
     </div>
 
-    <!-- 거시 흐름 레일 (한눈에 보기) -->
-    <div class="-mx-1 flex items-stretch gap-1 overflow-x-auto no-scrollbar px-1 pb-1" role="list" aria-label="연구 단계 흐름">
+    {hasProgress && (
+      <div class="fd-progress-track"><div class="fd-progress-fill" style={`--p:${progress}%`}></div></div>
+    )}
+
+    <div class="fd-stepper" role="list" aria-label="단계 진행 상태">
       {stages.map((s, i) => (
-        <div class="flex items-stretch" role="listitem">
-          <button
-            type="button"
-            data-flow-node={i}
-            class={`flow-node group flex w-40 shrink-0 flex-col rounded-xl border px-3 py-2.5 text-left transition hover:shadow-md ${tok(s.status).chip}`}
-            aria-expanded={i === defaultOpen ? 'true' : 'false'}
-            aria-controls={`flow-stage-${i}`}
-          >
-            <div class="flex items-center gap-2">
-              <span class={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[0.65rem] font-bold text-white ${s.status === '예정' ? '!text-slate-400' : ''} ${tok(s.status).dot}`}>{i + 1}</span>
-              <span class={`rounded px-1.5 py-0.5 text-[0.6rem] font-bold ${tok(s.status).badge}`}>{tok(s.status).label}</span>
-            </div>
-            <span class="mt-1.5 text-[0.82rem] font-bold leading-snug text-slate-800">{s.label}</span>
-            {s.summary && <span class="mt-0.5 text-[0.7rem] leading-snug text-[var(--muted)] line-clamp-2">{s.summary}</span>}
-            {s.period && <span class="mt-1 text-[0.62rem] font-medium text-slate-400">{s.period}</span>}
+        <>
+          {i > 0 && <div class={`fd-bar ${stages[i - 1].status !== '예정' ? 'done' : ''}`}></div>}
+          <button type="button" class="fd-step-node" data-goto={i} role="listitem" title={s.label}>
+            <span class={`fd-dot ${s.status === '완료' ? 'done' : s.status === '진행' ? 'current' : s.status === '다음주' ? 'next' : 'future'}`}>
+              {s.status === '완료' ? '✓' : i + 1}
+            </span>
+            <span class={`fd-steplab ${s.status === '진행' ? 'cur' : ''}`}>{shortLabel(s.label)}</span>
           </button>
-          {i < stages.length - 1 && (
-            <div class="flex shrink-0 items-center px-0.5 text-slate-300" aria-hidden="true">→</div>
-          )}
-        </div>
+        </>
       ))}
-    </div>
-
-    <!-- 세부 단계 (토글 아코디언) -->
-    <div class="mt-4 space-y-2">
-      {stages.map((s, i) => (
-        <details id={`flow-stage-${i}`} data-flow-detail={i} open={i === defaultOpen} class="group rounded-xl border border-[var(--line)] bg-slate-50/60">
-          <summary class="flex cursor-pointer list-none items-center gap-2.5 px-4 py-3">
-            <span class={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[0.7rem] font-bold text-white ${s.status === '예정' ? '!text-slate-400' : ''} ${tok(s.status).dot}`}>{i + 1}</span>
-            <span class="text-[0.7rem] font-semibold text-slate-400">{i + 1}단계</span>
-            <span class="min-w-0 flex-1 truncate text-sm font-bold text-slate-800">{s.label}</span>
-            <span class={`shrink-0 rounded px-2 py-0.5 text-[0.62rem] font-bold ${tok(s.status).badge}`}>{tok(s.status).label}</span>
-            <span class="shrink-0 text-slate-300 transition group-open:rotate-180" aria-hidden="true">▾</span>
-          </summary>
-          <div class="border-t border-[var(--line)] px-4 py-3">
-            {s.summary && <p class="mb-2.5 text-sm leading-relaxed text-slate-600">{s.summary}</p>}
-            {s.steps.length > 0 ? (
-              <ul class="space-y-1.5">
-                {s.steps.map((st) => (
-                  <li class="flex items-start gap-2 text-sm leading-relaxed">
-                    <span class={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${tok(st.status).dot}`}></span>
-                    <span class={`flex-1 ${st.status === '완료' ? 'text-slate-500' : 'text-slate-700'}`}>{st.text}</span>
-                    <span class={`shrink-0 text-[0.6rem] font-bold ${tok(st.status).step}`}>{st.status === '예정' ? '' : tok(st.status).label}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p class="text-sm text-[var(--muted)]">세부 항목이 아직 정리되지 않았습니다.</p>
-            )}
-            {s.period && <p class="mt-2.5 text-[0.7rem] font-medium text-slate-400">기간: {s.period}</p>}
-          </div>
-        </details>
-      ))}
-    </div>
-
-    <!-- 하단 설명 -->
-    <div class="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-xs leading-relaxed text-[var(--muted)]">
-      {flow.note && <p class="mb-1.5 text-slate-600">{flow.note}</p>}
-      <p>※ 이 흐름도는 <strong class="font-semibold text-slate-500">거시 단계(위 레일)</strong>에서 시작해 각 단계를 누르면 <strong class="font-semibold text-slate-500">세부 항목</strong>이 펼쳐집니다. 색상은 <span class="font-semibold text-emerald-600">완료</span> · <span class="font-semibold text-blue-600">진행 중(현재)</span> · <span class="font-semibold text-amber-600">다음 주 업무</span> · <span class="font-semibold text-slate-400">예정(향후)</span> 을 뜻하며, 회의록·결정사항에 따라 frontmatter <code class="rounded bg-slate-100 px-1">flow:</code> 를 수정하면 갱신됩니다.</p>
     </div>
   </div>
+
+  <!-- 수직 파이프라인 -->
+  <div class="fd-pipeline">
+    <div class="fd-spine"></div>
+    {stages.map((s, i) => {
+      const st = ss(s.status);
+      const spotlight = i === spotlightIndex;
+      const ic = s.icon ?? guessIcon(s.label);
+      return (
+        <section class={`fd-stage ${st.cls} ${spotlight ? 'is-spotlight' : ''}`} data-frontier={i === frontierIndex ? '1' : undefined}>
+          <div class="fd-node-circle">
+            {ic ? <span class="fd-node-ic">{ic}</span> : <span class="fd-node-n">{i + 1}</span>}
+            <span class="fd-badge-num">{i + 1}</span>
+          </div>
+          <div class="fd-card">
+            {spotlight && <span class="fd-ribbon"><span class="fd-rdot"></span>현재 진행 중</span>}
+            <div class="fd-card-head">
+              <h3 class="fd-card-title">{s.label}</h3>
+              <span class={`fd-status-badge ${st.cls}`}>{st.badge}</span>
+              {s.period && <span class="fd-period">{s.period}</span>}
+            </div>
+            {s.summary && <p class="fd-card-summary">{s.summary}</p>}
+            {s.steps.length > 0 && (
+              <ul class="fd-steps">
+                {s.steps.map((step) => {
+                  const t = sp(step.status);
+                  return (
+                    <li class={`fd-step ${t.cls}`}>
+                      <span class="fd-mark">{t.mark}</span>
+                      <span class="fd-txt">{step.text}</span>
+                      {t.chip && <span class="fd-chip">{t.chip}</span>}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </section>
+      );
+    })}
+  </div>
+
+  <!-- 범례 + 설명 -->
+  <footer class="fd-footer">
+    <div class="fd-legend">
+      <span class="fd-li"><span class="fd-sw done"></span>완료</span>
+      <span class="fd-li"><span class="fd-sw current"></span>진행 중 <em>(현재)</em></span>
+      <span class="fd-li"><span class="fd-sw next"></span>다음 주 업무</span>
+      <span class="fd-li"><span class="fd-sw plan"></span>예정 <em>(향후)</em></span>
+    </div>
+    <p class="fd-note">
+      <span class="fd-note-ic">🧭</span>
+      <span>
+        {flow.note && <><b>{flow.note}</b><br /></>}
+        위 <b>진행 스테퍼·세로 진행선</b>으로 지금 어느 단계까지 왔는지 한눈에 볼 수 있고, 각 단계 카드에 세부 작업이 색상별 중요도(<span class="fd-ink-done">완료</span>·<span class="fd-ink-now">진행</span>·<span class="fd-ink-next">다음주</span>·<span class="fd-ink-plan">예정</span>)로 표시됩니다. 회의록·결정사항에 따라 frontmatter <code>flow:</code> 를 수정하면 갱신됩니다.
+      </span>
+    </p>
+  </footer>
 </section>
 
-<script is:inline>
+<style>
+  .fd-root {
+    --ink:#1a1d24; --muted:#687087; --line:#e6e8ee; --card:#fff; --radius:16px;
+    --done:#10b981; --done-soft:#ecfdf5; --done-line:#a7f3d0;
+    --now:#2563eb;  --now-soft:#eff6ff;  --now-line:#bfdbfe; --now-glow:rgba(37,99,235,.18);
+    --next:#f59e0b; --next-soft:#fffbeb; --next-line:#fde68a;
+    --plan:#94a3b8; --plan-soft:#f8fafc; --plan-line:#e2e8f0;
+    display:block; margin-top:1.75rem; color:var(--ink);
+  }
+  .fd-root *{ box-sizing:border-box; }
+
+  /* 상단 요약 */
+  .fd-summary{
+    background:var(--card); border:1px solid var(--line); border-top:3px solid var(--accent);
+    border-radius:var(--radius); padding:24px 28px 22px;
+  }
+  .fd-summary-top{ display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:16px; }
+  .fd-h1{ font-size:22px; font-weight:800; letter-spacing:-.02em; margin:0 0 4px; }
+  .fd-sub{ color:var(--muted); font-size:13.5px; font-weight:500; margin:0; }
+  .fd-metrics{ display:flex; gap:12px; }
+  .fd-metric{ background:#fff; border:1px solid var(--line); border-radius:13px; padding:10px 16px; text-align:center; min-width:104px; }
+  .fd-v{ font-size:17px; font-weight:800; letter-spacing:-.01em; color:var(--now); line-height:1.15; }
+  .fd-v.fd-green{ color:var(--done); font-size:24px; }
+  .fd-l{ font-size:11.5px; color:var(--muted); margin-top:3px; font-weight:600; }
+
+  .fd-progress-track{ position:relative; height:10px; background:#eef0f5; border-radius:999px; overflow:hidden; margin-top:20px; }
+  .fd-progress-fill{ position:absolute; inset:0 auto 0 0; width:var(--p,0%); border-radius:999px;
+    background:linear-gradient(90deg,var(--done) 0%,var(--done) 55%,var(--now) 100%); animation:fdFill 1.4s cubic-bezier(.22,1,.36,1) both; }
+  @keyframes fdFill{ from{ width:0; } }
+
+  /* 진행 스테퍼 */
+  .fd-stepper{ display:flex; align-items:flex-start; gap:0; margin-top:22px; overflow-x:auto; padding-bottom:4px; }
+  .fd-stepper::-webkit-scrollbar{ height:6px; } .fd-stepper::-webkit-scrollbar-thumb{ background:#d2d6df; border-radius:6px; }
+  .fd-step-node{ display:flex; flex-direction:column; align-items:center; gap:7px; flex:0 0 auto; background:none; border:none; cursor:pointer; padding:0 2px; font-family:inherit; }
+  .fd-dot{ width:38px; height:38px; border-radius:50%; display:grid; place-items:center; font-size:14px; font-weight:800; color:#fff; border:3px solid #fff; box-shadow:0 0 0 1px var(--line); transition:transform .2s; }
+  .fd-step-node:hover .fd-dot{ transform:scale(1.08); }
+  .fd-dot.done{ background:var(--done); }
+  .fd-dot.current{ width:44px; height:44px; font-size:16px; background:var(--now); box-shadow:0 0 0 1px var(--now-line),0 0 0 6px var(--now-glow); animation:fdPulse 2.2s ease-in-out infinite; }
+  .fd-dot.next{ background:var(--next); }
+  .fd-dot.future{ background:#cbd2dd; }
+  .fd-steplab{ font-size:11.5px; font-weight:700; color:var(--muted); white-space:nowrap; max-width:130px; overflow:hidden; text-overflow:ellipsis; }
+  .fd-steplab.cur{ color:var(--now); }
+  .fd-bar{ height:3px; flex:1 1 auto; min-width:28px; background:var(--plan-line); margin:19px 4px 0; border-radius:2px; }
+  .fd-bar.done{ background:linear-gradient(90deg,var(--done),var(--now)); }
+
+  /* 파이프라인 */
+  .fd-pipeline{ position:relative; padding-left:74px; margin-top:30px; }
+  .fd-spine{ position:absolute; left:33px; top:20px; bottom:20px; width:4px; border-radius:4px;
+    background:repeating-linear-gradient(to bottom,var(--plan-line) 0 8px,transparent 8px 16px); }
+  .fd-spine::before{ content:""; position:absolute; left:0; top:0; width:100%; height:var(--fill,0px); border-radius:4px;
+    background:linear-gradient(180deg,var(--done) 0%,var(--done) 60%,var(--now) 100%); transition:height .9s cubic-bezier(.22,1,.36,1); }
+  .fd-spine::after{ content:""; position:absolute; left:-3px; width:10px; height:10px; border-radius:50%; background:var(--now);
+    box-shadow:0 0 0 5px var(--now-glow); top:var(--fill,0px); transform:translateY(-50%); opacity:var(--fillop,0); animation:fdPulse 2.2s ease-in-out infinite; }
+
+  .fd-stage{ position:relative; margin-bottom:28px; }
+  .fd-stage:last-child{ margin-bottom:0; }
+
+  .fd-node-circle{ position:absolute; left:-74px; top:22px; width:58px; height:58px; border-radius:50%; display:grid; place-items:center;
+    background:var(--card); border:3px solid var(--plan-line); font-size:24px; z-index:2; }
+  .fd-node-n{ font-size:22px; font-weight:800; color:var(--plan); }
+  .fd-badge-num{ position:absolute; bottom:-7px; right:-7px; width:23px; height:23px; border-radius:50%; background:var(--plan); color:#fff;
+    font-size:12px; font-weight:800; display:grid; place-items:center; border:2px solid var(--card); }
+  .fd-stage.is-done .fd-node-circle{ border-color:var(--done-line); background:var(--done-soft); }
+  .fd-stage.is-done .fd-badge-num{ background:var(--done); }
+  .fd-stage.is-current .fd-node-circle{ border-color:var(--now); background:var(--now-soft); }
+  .fd-stage.is-current .fd-node-circle .fd-node-n{ color:var(--now); }
+  .fd-stage.is-current .fd-badge-num{ background:var(--now); }
+  .fd-stage.is-next .fd-node-circle{ border-color:var(--next-line); background:var(--next-soft); }
+  .fd-stage.is-next .fd-badge-num{ background:var(--next); }
+  .fd-stage.is-spotlight .fd-node-circle{ box-shadow:0 0 0 6px var(--now-glow); animation:fdPulse 2.2s ease-in-out infinite; transform:scale(1.08); }
+
+  /* 카드 */
+  .fd-card{ background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:20px 24px; position:relative; }
+  .fd-stage.is-done .fd-card{ opacity:.93; }
+  .fd-stage.is-next .fd-card{ border-color:var(--next-line); background:linear-gradient(0deg,#fff,var(--next-soft)); }
+  .fd-stage.is-plan .fd-card{ background:var(--plan-soft); border-style:dashed; border-color:var(--plan-line); opacity:.9; }
+  .fd-stage.is-spotlight .fd-card{ border:2px solid var(--now); box-shadow:0 0 0 5px var(--now-glow),0 18px 40px -18px rgba(37,99,235,.42);
+    animation:fdCardGlow 3.6s ease-in-out infinite; }
+  @keyframes fdCardGlow{ 0%,100%{ box-shadow:0 0 0 5px var(--now-glow),0 16px 34px -18px rgba(37,99,235,.38); } 50%{ box-shadow:0 0 0 8px rgba(37,99,235,.10),0 22px 46px -16px rgba(37,99,235,.5); } }
+
+  .fd-ribbon{ position:absolute; top:-13px; left:22px; background:var(--now); color:#fff; font-size:11.5px; font-weight:800;
+    padding:4px 13px; border-radius:999px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 12px -2px var(--now-glow); }
+  .fd-rdot{ width:6px; height:6px; border-radius:50%; background:#fff; animation:fdBlink 1.4s ease-in-out infinite; }
+  @keyframes fdBlink{ 0%,100%{ opacity:.4; } 50%{ opacity:1; } }
+
+  .fd-card-head{ display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+  .fd-stage.is-spotlight .fd-card-head{ margin-top:5px; }
+  .fd-card-title{ font-size:20px; font-weight:800; letter-spacing:-.02em; margin:0; }
+  .fd-stage.is-plan .fd-card-title{ color:#4b5563; }
+  .fd-status-badge{ font-size:11.5px; font-weight:800; padding:3px 11px; border-radius:999px; }
+  .fd-status-badge.is-done{ background:var(--done-soft); color:#047857; border:1px solid var(--done-line); }
+  .fd-status-badge.is-current{ background:var(--now); color:#fff; }
+  .fd-status-badge.is-next{ background:var(--next-soft); color:#92400e; border:1px solid var(--next-line); }
+  .fd-status-badge.is-plan{ background:#eef1f6; color:#64748b; border:1px solid var(--plan-line); }
+  .fd-period{ margin-left:auto; font-size:12.5px; font-weight:600; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .fd-card-summary{ font-size:14px; color:#3b414d; font-weight:500; margin:8px 0 16px; }
+  .fd-stage.is-spotlight .fd-card-summary{ color:#1e3a8a; font-weight:600; }
+
+  .fd-steps{ list-style:none; margin:0; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:8px 16px; }
+  .fd-step{ display:flex; align-items:flex-start; gap:9px; font-size:13.5px; padding:6px 10px; border-radius:9px; line-height:1.4; }
+  .fd-mark{ flex:0 0 auto; margin-top:1px; width:17px; height:17px; border-radius:50%; display:grid; place-items:center; font-size:10.5px; font-weight:800; line-height:1; }
+  .fd-txt{ flex:1 1 auto; }
+  .fd-chip{ flex:0 0 auto; font-size:10px; font-weight:800; padding:1px 7px; border-radius:999px; align-self:center; }
+  .fd-step.s-done{ color:#7b8494; }
+  .fd-step.s-done .fd-mark{ background:var(--done); color:#fff; }
+  .fd-step.s-prog{ background:var(--now-soft); color:#1e3a8a; font-weight:700; }
+  .fd-step.s-prog .fd-mark{ background:var(--now); color:#fff; box-shadow:0 0 0 3px var(--now-glow); }
+  .fd-step.s-prog .fd-chip{ background:var(--now); color:#fff; }
+  .fd-step.s-next{ background:var(--next-soft); color:#92400e; font-weight:600; border:1px solid var(--next-line); }
+  .fd-step.s-next .fd-mark{ background:var(--next); color:#fff; }
+  .fd-step.s-next .fd-chip{ background:var(--next); color:#fff; }
+  .fd-step.s-plan{ color:#94a3b8; }
+  .fd-step.s-plan .fd-mark{ background:transparent; border:1.5px dashed #cbd2dd; color:#cbd2dd; }
+  .fd-step.s-plan .fd-chip{ background:#eef1f6; color:#94a3b8; }
+
+  @keyframes fdPulse{ 0%,100%{ box-shadow:0 0 0 5px var(--now-glow); } 50%{ box-shadow:0 0 0 9px rgba(37,99,235,.04); } }
+
+  /* 범례 + 설명 */
+  .fd-footer{ margin-top:32px; background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:20px 24px; }
+  .fd-legend{ display:flex; flex-wrap:wrap; gap:14px 24px; align-items:center; padding-bottom:16px; border-bottom:1px solid var(--line); }
+  .fd-li{ display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; color:#3b414d; }
+  .fd-li em{ color:var(--muted); font-style:normal; font-weight:500; }
+  .fd-sw{ width:15px; height:15px; border-radius:5px; flex:0 0 auto; }
+  .fd-sw.done{ background:var(--done); } .fd-sw.current{ background:var(--now); box-shadow:0 0 0 3px var(--now-glow); }
+  .fd-sw.next{ background:var(--next); } .fd-sw.plan{ background:#fff; border:1.5px dashed #cbd2dd; }
+  .fd-note{ margin:16px 0 0; display:flex; gap:11px; font-size:13.5px; color:var(--muted); line-height:1.65; }
+  .fd-note-ic{ font-size:17px; flex:0 0 auto; }
+  .fd-note b{ color:var(--ink); font-weight:700; }
+  .fd-note code{ background:#eef0f4; padding:.1em .35em; border-radius:4px; font-size:.86em; }
+  .fd-ink-done{ color:#047857; font-weight:700; } .fd-ink-now{ color:var(--now); font-weight:700; }
+  .fd-ink-next{ color:#b45309; font-weight:700; } .fd-ink-plan{ color:#64748b; font-weight:700; }
+
+  /* 반응형 */
+  @media (max-width:760px){
+    .fd-steps{ grid-template-columns:1fr; }
+    .fd-pipeline{ padding-left:54px; }
+    .fd-spine{ left:23px; }
+    .fd-node-circle{ left:-54px; width:46px; height:46px; font-size:19px; top:18px; }
+    .fd-card-title{ font-size:18px; }
+    .fd-summary{ padding:20px 18px; }
+  }
+  @media (prefers-reduced-motion:reduce){
+    .fd-root *{ animation:none !important; }
+  }
+</style>
+
+<script>
   (function () {
-    const nodes = document.querySelectorAll('[data-flow-node]');
-    const open = (i, scroll) => {
-      const details = document.querySelectorAll('[data-flow-detail]');
-      details.forEach((d) => { d.open = String(d.getAttribute('data-flow-detail')) === String(i); });
-      nodes.forEach((n) => {
-        const on = String(n.getAttribute('data-flow-node')) === String(i);
-        n.setAttribute('aria-expanded', on ? 'true' : 'false');
-        n.classList.toggle('ring-2', on);
-        n.classList.toggle('ring-offset-1', on);
+    const sections = document.querySelectorAll('.fd-root');
+    sections.forEach((root) => {
+      const spine = root.querySelector('.fd-spine');
+      const frontier = root.querySelector('.fd-stage[data-frontier="1"]');
+      const pipeline = root.querySelector('.fd-pipeline');
+      const setFill = () => {
+        if (!spine || !pipeline) return;
+        if (!frontier) { spine.style.setProperty('--fill', '0px'); spine.style.setProperty('--fillop', '0'); return; }
+        const node = frontier.querySelector('.fd-node-circle');
+        if (!node) return;
+        const pTop = pipeline.getBoundingClientRect().top;
+        const sTop = 20; // .fd-spine top offset
+        const nRect = node.getBoundingClientRect();
+        const center = (nRect.top - pTop) + nRect.height / 2;
+        const fill = Math.max(0, center - sTop);
+        spine.style.setProperty('--fill', fill + 'px');
+        spine.style.setProperty('--fillop', '1');
+      };
+      // 스테퍼 클릭 → 해당 단계 카드로 스크롤
+      root.querySelectorAll('[data-goto]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const i = btn.getAttribute('data-goto');
+          const cards = root.querySelectorAll('.fd-stage');
+          const target = cards[Number(i)];
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const card = target.querySelector('.fd-card');
+            if (card) { card.animate([{ outlineColor: 'rgba(37,99,235,.6)' }, { outlineColor: 'rgba(37,99,235,0)' }], { duration: 1400 }); }
+          }
+        });
       });
-      if (scroll) {
-        const t = document.getElementById('flow-stage-' + i);
-        if (t) t.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }
-    };
-    nodes.forEach((n) => n.addEventListener('click', () => open(n.getAttribute('data-flow-node'), true)));
-    // 초기: 기본 펼친 단계의 노드를 강조
-    const opened = document.querySelector('[data-flow-detail][open]');
-    if (opened) open(opened.getAttribute('data-flow-detail'), false);
+      setFill();
+      window.addEventListener('load', setFill);
+      let t; window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(setFill, 150); });
+    });
   })();
 </script>

@@ -123,7 +123,7 @@ const typeColor: Record<string, string> = {
 
   <!-- 연구 흐름도 -->
   {p.flow && p.flow.stages && p.flow.stages.length > 0 && (
-    <FlowDiagram flow={p.flow} color={p.color} />
+    <FlowDiagram flow={p.flow} color={p.color} progress={p.progress} />
   )}
 
   <!-- 타임라인 -->
