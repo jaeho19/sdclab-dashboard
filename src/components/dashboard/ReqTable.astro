@@ -1,0 +1,27 @@
+---
+// 졸업요건 상세 표 (spec §2 학생 상세 ③; mockup L712-717).
+// 각 행 `.reqrow`: StatusBadge(req) · <b>{요건명}</b> · .rq-std={기준} · .rq-now={현재||'—'}.
+import StatusBadge from './StatusBadge.astro';
+type ReqStatus = '완료' | '진행' | '미착수';
+interface Req {
+  c: string;
+  std: string;
+  now: string;
+  st: ReqStatus;
+}
+interface Props {
+  reqs: Req[];
+}
+const { reqs } = Astro.props;
+---
+
+{
+  reqs.map((r) => (
+    <div class="reqrow">
+      <StatusBadge variant="req" st={r.st} />
+      <b>{r.c}</b>
+      <span class="rq-std">{r.std}</span>
+      <span class="rq-now">{r.now || '—'}</span>
+    </div>
+  ))
+}

@@ -1,0 +1,38 @@
+---
+// 지도교수 코멘트 (spec §2 학생 상세 ⑧; mockup L773-778).
+//
+// ⚠️ 보류(HELD BACK): 이 컴포넌트는 빌드만 하고 학생 상세 페이지에 **마운트하지 않는다**.
+//    교수 코멘트 공개 여부는 사용자(교수) 결정 대기 상태이므로, 섹션 ⑧은 페이지에서 완전히 생략한다.
+//    (comments.json 데이터는 존재하지만 어떤 텍스트/카운트도 페이지에 렌더링되지 않는다.)
+//    결정이 서면 페이지에서 `<Card class="thread"><CommentThread .../></Card>` 형태로 감싸 마운트하면 된다.
+//
+// comments.json[slug] → { prof[], reply[] }. prof→.msg.prof(지도교수), reply→.msg.stu(학생 이름).
+// reply가 비어 있으면 '응답 대기 중' 배지(.await). 바깥 `.card.thread` 래퍼는 마운트 시 페이지가 감싼다.
+interface Props {
+  name: string;
+  prof: string[];
+  reply: string[];
+}
+const { name, prof, reply } = Astro.props;
+---
+
+<div class="thread">
+  {prof.map((p) => (
+    <div class="msg prof">
+      <div class="who">지도교수</div>
+      {p}
+    </div>
+  ))}
+  {
+    reply.length ? (
+      reply.map((r) => (
+        <div class="msg stu">
+          <div class="who">{name}</div>
+          {r}
+        </div>
+      ))
+    ) : (
+      <span class="await">응답 대기 중 — 시트에 답변을 적으면 여기로 옵니다</span>
+    )
+  }
+</div>

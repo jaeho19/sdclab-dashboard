@@ -39,3 +39,7 @@ scripts/run-hidden.vbs
 
 # 목업 참조 사본 (학생 실데이터 포함 — 공개 repo에 커밋 금지)
 docs/mockup-reference.html
+
+# 교수 코멘트·학생 답변 (프라이버시 분리 — 빌드가 생성하되 공개 repo에 커밋 금지)
+# students/papers/conferences.json 은 커밋 대상 (여기 넣지 말 것)
+content/dashboard/comments.json

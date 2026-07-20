@@ -1,0 +1,54 @@
+---
+// Conference radar for /papers (spec §2 ConfRadar, mock:846-851). One `.card.conf` per
+// conference: name, timing, presenter avatar stack (initials), presentation titles, and the
+// deadline line. All current rows are `tbd` → `◌ {abs}` (undetermined marker + timing text);
+// the `dl` branch (`◆ {abs} (D-day)`, `.hot` when ≤60d) is implemented for when a hard
+// deadline gets filled in later — D-day is computed at build via lib/dates.
+import { dday, fmtDday } from '../../lib/dates';
+
+interface Conference {
+  n: string;
+  when: string;
+  abs: string;
+  tbd: boolean;
+  dl?: string;
+  who: string[];
+  items: string[];
+}
+interface Props {
+  conferences: Conference[];
+}
+const { conferences } = Astro.props;
+---
+
+{
+  conferences.map((c) => {
+    const n = c.dl ? dday(c.dl) : null;
+    return (
+      <div class="card conf">
+        <b>{c.n}</b>
+        <div class="when">{c.when}</div>
+        <div class="avs">
+          {c.who.map((w) => (
+            <span class="av" title={w}>{w[0]}</span>
+          ))}
+        </div>
+        <div class="items">
+          {c.items.map((i, idx) => (
+            <>
+              {idx > 0 && <br />}
+              {i}
+            </>
+          ))}
+        </div>
+        {c.tbd || n === null ? (
+          <div class="dl tbd">◌ {c.abs}</div>
+        ) : (
+          <div class:list={['dl', { hot: n <= 60 }]}>
+            ◆ {c.abs} <span class="num">({fmtDday(n)})</span>
+          </div>
+        )}
+      </div>
+    );
+  })
+}

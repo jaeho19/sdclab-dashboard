@@ -1,0 +1,152 @@
+[
+  {
+    "id": "R01",
+    "kind": "실제",
+    "stu": "오재인",
+    "t": "Green Space Patterns and Urban Heat: Assessing Cooling Effec…",
+    "tier": "SCIE",
+    "jr": "Urban Climate",
+    "st": "거절",
+    "stEn": "Rejected"
+  },
+  {
+    "id": "R02",
+    "kind": "실제",
+    "stu": "강성익",
+    "t": "Beyond Parks in Urban Redevelopment: Non-park Greenery as…",
+    "tier": "SCIE",
+    "jr": "Cities",
+    "st": "거절",
+    "stEn": "Rejected"
+  },
+  {
+    "id": "R03",
+    "kind": "실제",
+    "stu": "오재인",
+    "t": "Transit to Parks for Aging in Place: An Environmental Justice As…",
+    "tier": "SCIE",
+    "jr": "Journal of Transport & Health",
+    "st": "수정 중",
+    "stEn": "Under Revision"
+  },
+  {
+    "id": "R04",
+    "kind": "실제",
+    "stu": "이재호",
+    "t": "Navigating Towards Inclusivity: Enhancing Park Access with D…",
+    "tier": "SCIE",
+    "jr": "International Journal of Urban Sciences",
+    "st": "재투고",
+    "stEn": "Resubmitted"
+  },
+  {
+    "id": "R05",
+    "kind": "실제",
+    "stu": "우정헌",
+    "t": "From Quantity to Quality: Determinants of Urban Park Visitatio…",
+    "tier": "SCIE",
+    "jr": "International Journal of Urban Sciences",
+    "st": "심사 중",
+    "stEn": "Under Review"
+  },
+  {
+    "id": "R06",
+    "kind": "실제",
+    "stu": "김은솔",
+    "t": "여주시 정주만족도 유형 분류 및 공간적 결정요인 분석 연구",
+    "tier": "KCI",
+    "jr": "한국농촌계획학회",
+    "st": "투고 완료",
+    "stEn": "Submitted"
+  },
+  {
+    "id": "R07",
+    "kind": "실제",
+    "stu": "강성익",
+    "t": "After Sunset: Spatiotemporal Patterns, Equity, and Determinan…",
+    "tier": "SCIE",
+    "jr": "Cities",
+    "st": "심사 중",
+    "stEn": "Under Review"
+  },
+  {
+    "id": "R08",
+    "kind": "실제",
+    "stu": "김정옥",
+    "t": "Toward Inclusive Urban Parks: Automating Accessibility Diagn…",
+    "tier": "SCIE",
+    "jr": "Sensors and Materials",
+    "st": "심사 중",
+    "stEn": "Under Review"
+  },
+  {
+    "id": "R09",
+    "kind": "실제",
+    "stu": "이재호",
+    "t": "디지털 페르소나의 단계적 구축과 농촌 정주여건 설문의 대체 가능성: 여주시 9개 읍면을 대상으로 한 탐색적 검증",
+    "tier": "KCI",
+    "jr": "한국농촌계획학회",
+    "st": "투고 완료",
+    "stEn": "Submitted"
+  },
+  {
+    "id": "A01",
+    "kind": "실제",
+    "stu": "최희진",
+    "t": "광역지원기관 중심의 농촌공간 추진체계 구축 방안 - 다층거버넌스 이론과 국내외 사…",
+    "tier": "KCI",
+    "jr": "한국농촌계획학회",
+    "st": "게재확정",
+    "stEn": "Accepted"
+  },
+  {
+    "id": "A02",
+    "kind": "실제",
+    "stu": "지인섭",
+    "t": "농촌공간재구조화법 시행 초기 농촌특화지구 후보군 도출 프로세스 연구",
+    "tier": "KCI",
+    "jr": "한국농촌계획학회",
+    "st": "게재",
+    "stEn": "Published"
+  },
+  {
+    "id": "A03",
+    "kind": "실제",
+    "stu": "이재호",
+    "t": "Beyond Proximity: A Three-Dimensional Assessment of Urban P…",
+    "tier": "SCIE",
+    "jr": "Cities",
+    "st": "게재",
+    "stEn": "Published"
+  },
+  {
+    "id": "A04",
+    "kind": "실제",
+    "stu": "이다연",
+    "t": "Beyond Distance: A Computational Framework for Route-Based …",
+    "tier": "SCIE",
+    "jr": "Computers, Environment and Urban Systems",
+    "st": "게재",
+    "stEn": "Published"
+  },
+  {
+    "id": "A05",
+    "kind": "실제",
+    "stu": "김은솔",
+    "t": "농촌 태양광 발전 사업의 주민수용성 결정 요인 연구 : 환경정의를 중심으로 한 질적…",
+    "tier": "KCI",
+    "jr": "한국조경학회",
+    "st": "게재",
+    "stEn": "Published"
+  },
+  {
+    "id": "A06",
+    "kind": "실제",
+    "stu": "김은솔",
+    "t": "광역-기초-생활권을 연계한 경기도 농촌공간 다층적 유형화 모델 개발",
+    "tier": "KCI",
+    "jr": "한국농촌계획학회",
+    "st": "게재",
+    "stEn": "Published"
+  }
+]

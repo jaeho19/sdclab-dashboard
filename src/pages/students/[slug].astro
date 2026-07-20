@@ -1,0 +1,243 @@
+---
+// 학생 상세 (spec §2-2 · §3b; mockup openStudent() L681-780). 8개 섹션을 계획서 순서대로 렌더.
+// ⑧ 지도교수 코멘트는 사용자 결정으로 보류(HELD BACK) — CommentThread.astro는 빌드만 하고 여기서 import/렌더하지 않는다.
+// 데이터: content/dashboard/students.json(경로별), papers.json(stu===name 필터 → ④). 라이트 모드 전용.
+import Base from '../../layouts/Base.astro';
+import Card from '../../components/dashboard/Card.astro';
+import DegreeBadge from '../../components/dashboard/DegreeBadge.astro';
+import SemesterBar from '../../components/dashboard/SemesterBar.astro';
+import ReqStepper from '../../components/dashboard/ReqStepper.astro';
+import ReqTable from '../../components/dashboard/ReqTable.astro';
+import PaperPipeline from '../../components/dashboard/PaperPipeline.astro';
+import ConfPlan from '../../components/dashboard/ConfPlan.astro';
+import ResearchIdentity from '../../components/dashboard/ResearchIdentity.astro';
+import PersonalGantt from '../../components/dashboard/PersonalGantt.astro';
+import studentsData from '../../../content/dashboard/students.json';
+import papersData from '../../../content/dashboard/papers.json';
+import { parseDate, parseDateEnd, today, dday, fmtDday } from '../../lib/dates';
+
+type ReqStatus = '완료' | '진행' | '미착수';
+type CatKey = 'R' | 'C' | 'J' | 'D';
+interface Req {
+  c: string;
+  std: string;
+  now: string;
+  st: ReqStatus;
+}
+interface Sched {
+  t: CatKey;
+  n: string;
+  s: string;
+  e: string;
+  fix?: string;
+}
+interface Student {
+  name: string;
+  slug: string;
+  deg: string;
+  entry: string;
+  goal: string;
+  goalDate: string;
+  remain: number;
+  elapsed: number;
+  career: string;
+  careerNeed: string;
+  gapTxt: string | null;
+  kw: string;
+  rq: string[] | null;
+  gap: string | null;
+  methods: string[];
+  datas: string[];
+  reqs: Req[];
+  sched: Sched[];
+  hasComments: boolean;
+  profCount: number;
+  replyCount: number;
+}
+interface Paper {
+  id: string;
+  kind: string;
+  stu: string;
+  t: string;
+  tier: string;
+  jr: string;
+  st: string;
+  stEn: string;
+}
+
+const papers = papersData as unknown as Paper[];
+
+export function getStaticPaths() {
+  return (studentsData as unknown as Student[]).map((s) => ({
+    params: { slug: s.slug },
+    props: { s },
+  }));
+}
+
+const { s } = Astro.props as { s: Student };
+const base = import.meta.env.BASE_URL;
+const t0 = today().getTime();
+
+// ── 파생값 ─────────────────────────────────────────
+const myPapers = papers.filter((p) => p.stu === s.name); // 실제 논문만(계획 논문은 Phase1 추가 대기)
+const confRows = s.sched
+  .filter((r) => r.t === 'C')
+  .sort((a, b) => parseDate(a.s).getTime() - parseDate(b.s).getTime());
+const nowTasks = s.sched.filter(
+  (r) => parseDate(r.s).getTime() <= t0 && t0 <= parseDateEnd(r.e).getTime(),
+);
+const coming = s.sched
+  .filter((r) => parseDate(r.s).getTime() > t0)
+  .sort((a, b) => parseDate(a.s).getTime() - parseDate(b.s).getTime())
+  .slice(0, 5);
+
+const catVar: Record<CatKey, string> = { R: '--c-res', C: '--c-conf', J: '--c-jour', D: '--c-rev' };
+const fdEnd = (e: string) => '~' + e.slice(2, 7).replace('-', '.'); // 'YYYY-MM-..' → '~YY.MM'
+
+const meta = 'rounded-lg bg-[var(--soft)] px-2.5 py-1 text-[11.5px] text-[var(--muted)]';
+const metaB = 'font-bold text-[var(--ink)]';
+const sec = 'sec mt-7 mb-3';
+const secSmall = 'font-medium normal-case tracking-normal';
+const paneH3 = 'text-xs uppercase tracking-[.06em] text-[var(--muted)]';
+const legendSw = 'ml-2 mr-[3px] inline-block h-3 w-3 rounded-[4px] align-[-2px]';
+---
+
+<Base title={`${s.name} · 졸업 로드맵 · SDC Lab 대시보드`} description={s.kw}>
+  <a href={`${base}roadmap`} class="mb-3.5 inline-block text-[12.5px] text-[var(--muted)] hover:text-[var(--ink)]">← 졸업 로드맵으로</a>
+
+  {/* ① 헤더 */}
+  <Card class="flex flex-wrap items-center gap-5 p-5">
+    <div class="min-w-[240px] flex-1">
+      <h1 class="mb-0.5 text-2xl font-extrabold tracking-tight text-slate-900">
+        {s.name} <DegreeBadge deg={s.deg} />
+      </h1>
+      <p class="m-0 text-[13px] text-[var(--muted)]">{s.kw}</p>
+      <div class="mt-2 flex flex-wrap gap-2">
+        <span class={meta}>입학 <b class:list={['num', metaB]}>{s.entry}</b></span>
+        <span class={meta}>졸업 목표 <b class={metaB}>{s.goal}</b></span>
+        <span class={meta}>진로 1순위 <b class={metaB}>{s.career}</b></span>
+        <span class={meta}>진로 요구 산출물 <b class={metaB}>{s.careerNeed}</b></span>
+        {
+          s.gapTxt ? (
+            <span class={meta}>
+              현재 격차 <b class={metaB}>{s.gapTxt}</b>
+            </span>
+          ) : (
+            <span class="rounded-lg border-[1.5px] border-dashed border-[var(--line)] px-2.5 py-1 text-[11.5px] text-[var(--muted)]">
+              현재 격차 — 작성 필요
+            </span>
+          )
+        }
+      </div>
+      <SemesterBar big reqs={s.reqs} elapsed={s.elapsed} remain={s.remain} entry={s.entry} />
+    </div>
+  </Card>
+
+  {/* ② 졸업요건 로드맵 (stepper) */}
+  <h2 class={sec}>졸업요건 로드맵</h2>
+  <Card class="stepper">
+    <ReqStepper reqs={s.reqs} />
+  </Card>
+  <p class="mt-2 text-[11.5px] text-[var(--muted)]">
+    <span class={legendSw} style="background:var(--ok)"></span>초록 = 완료
+    <span class={legendSw} style="background:var(--c-conf)"></span>주황 테두리 = 진행 중
+    <span class={legendSw} style="border:1.5px dashed var(--line)"></span>회색 = 미착수 — 심사 단계의
+    예정 시기는 아래 개인 간트의 일정과 같습니다
+  </p>
+
+  {/* ③ 졸업요건 상세 */}
+  <h2 class={sec}>졸업요건 상세 <span class={secSmall}>— 시트 '4. 체크리스트' 연동</span></h2>
+  <Card pad="p-[8px_16px]">
+    <ReqTable reqs={s.reqs} />
+  </Card>
+
+  {/* ④ 투고 논문 — 이 학생의 실제 논문이 있을 때만 섹션 전체 표시 */}
+  {
+    myPapers.length > 0 && (
+      <Fragment>
+        <h2 class={sec}>
+          투고 논문 <span class={secSmall}>— 이 학생의 파이프라인 (투고 논문 탭과 연동)</span>
+        </h2>
+        <Card pad="p-[8px_16px]">
+          <PaperPipeline rows={myPapers} />
+        </Card>
+      </Fragment>
+    )
+  }
+
+  {/* ⑤ 학회 발표 계획 — 학회(C) 일정이 있을 때만 */}
+  {
+    confRows.length > 0 && (
+      <Fragment>
+        <h2 class={sec}>
+          학회 발표 계획 <span class={secSmall}>— 시트 '5. 일정'의 학회 항목</span>
+        </h2>
+        <Card pad="p-[8px_16px]">
+          <ConfPlan rows={confRows} />
+        </Card>
+      </Fragment>
+    )
+  }
+
+  {/* ⑥ 연구 정체성 + 이번 분기/다가오는 일정 (2열) */}
+  <div class="mt-3.5 grid gap-3.5 md:grid-cols-2">
+    <Card pad="p-4">
+      <ResearchIdentity methods={s.methods} datas={s.datas} rq={s.rq} gap={s.gap} />
+    </Card>
+    <Card pad="p-4">
+      <h3 class:list={['mb-2.5', paneH3]}>이번 분기 진행 중</h3>
+      <ul class="focus">
+        {
+          nowTasks.length ? (
+            nowTasks.map((r) => (
+              <li>
+                <span class="dot" style={`background:var(${catVar[r.t]})`} />
+                {r.n}
+                <span class="fd num">{fdEnd(r.e)}</span>
+              </li>
+            ))
+          ) : (
+            <li class="empty block">진행 중 항목 없음</li>
+          )
+        }
+      </ul>
+      <h3 class:list={['mt-4 mb-2.5', paneH3]}>다가오는 일정</h3>
+      <ul class="focus">
+        {
+          coming.map((r) => {
+            const n = dday(r.s);
+            return (
+              <li>
+                <span class="dot" style={`background:var(${catVar[r.t]})`} />
+                {r.n}
+                <span class:list={['fd', 'num', { hot: n <= 45 }]} data-dday={r.s}>
+                  {fmtDday(n)}
+                </span>
+              </li>
+            );
+          })
+        }
+      </ul>
+    </Card>
+  </div>
+
+  {/* ⑦ 개인 간트 */}
+  <h2 class={sec}>개인 간트 <span class={secSmall}>— 시트 '5. 일정' 연동</span></h2>
+  <Card class="gwrap">
+    <PersonalGantt sched={s.sched} />
+  </Card>
+  <div class="mt-2 flex flex-wrap items-center gap-3.5 text-[11.5px] text-[var(--muted)]">
+    <span class="inline-flex items-center gap-[5px]"><span class="inline-block h-3 w-3 rounded-[4px]" style="background:var(--c-res)"></span>연구·집필</span>
+    <span class="inline-flex items-center gap-[5px]"><span class="inline-block h-3 w-3 rounded-[4px]" style="background:var(--c-conf)"></span>학회</span>
+    <span class="inline-flex items-center gap-[5px]"><span class="inline-block h-3 w-3 rounded-[4px]" style="background:var(--c-jour)"></span>저널투고</span>
+    <span class="inline-flex items-center gap-[5px]"><span class="inline-block h-3 w-3 rounded-[4px]" style="background:var(--c-rev)"></span>심사·졸업</span>
+  </div>
+
+  {/* ⑧ 지도교수 코멘트 — 보류(HELD BACK): 섹션 전체 생략, CommentThread 마운트하지 않음. */}
+
+  <div id="tip"></div>
+
+  <script>
+    import '../../scripts/student-detail';
+  </script>
+</Base>

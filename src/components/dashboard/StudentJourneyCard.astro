@@ -1,0 +1,104 @@
+---
+// 학생별 여정 카드 (spec §2 / §3a; mockup L610-628).
+// 정적(빌드): 이름·과정/졸업목표 배지·연구 키워드·진로 1순위·게재 논문(실명)·SemesterBar.
+// 클라이언트 갱신(로드맵 페이지 스크립트): '지금'(오늘 겹치는 sched, 학회 제외)·
+//   '다음'(다가오는 심사 D·투고 J, 학회 제외) + D-day. sched는 data-sched로 임베드.
+// 빌드 시에도 올바른 값이 렌더되도록(무JS·레이아웃 시프트 방지) 지금/다음을 미리 계산한다.
+import DegreeBadge from './DegreeBadge.astro';
+import SemesterBar from './SemesterBar.astro';
+import papers from '../../../content/dashboard/papers.json';
+import { parseDate, parseDateEnd, today, dday, fmtDday } from '../../lib/dates';
+
+interface Req {
+  c: string;
+  std: string;
+  now: string;
+  st: string;
+}
+interface Sched {
+  t: string;
+  n: string;
+  s: string;
+  e: string;
+  fix?: string;
+}
+interface Student {
+  name: string;
+  slug: string;
+  deg: string;
+  goal: string;
+  kw: string;
+  career: string;
+  elapsed: number;
+  remain: number;
+  reqs: Req[];
+  sched: Sched[];
+}
+interface Props {
+  student: Student;
+}
+const { student: s } = Astro.props;
+
+const base = import.meta.env.BASE_URL;
+const url = `${base}students/${s.slug}`;
+const t0 = today();
+
+// 지금 — 오늘과 겹치는 sched(학회 t="C" 제외), 최대 2개
+const nowNonConf = s.sched.filter(
+  (r) =>
+    r.t !== 'C' &&
+    parseDate(r.s).getTime() <= t0.getTime() &&
+    t0.getTime() <= parseDateEnd(r.e).getTime(),
+);
+const nowTxt = nowNonConf.length ? nowNonConf.map((r) => r.n).slice(0, 2).join(' · ') : '진행 중 항목 없음';
+
+// 다음 — 다가오는 심사·투고 중 가장 가까운 것
+const nm = s.sched
+  .filter((r) => parseDate(r.s).getTime() > t0.getTime() && (r.t === 'D' || r.t === 'J'))
+  .sort((a, b) => parseDate(a.s).getTime() - parseDate(b.s).getTime())[0];
+
+// 게재 논문 (실명) — 이 학생의 실제 논문 중 게재/게재확정
+const stageOf = (st: string) => (st === '게재확정' ? '게재' : st);
+const pubs = papers.filter((p) => p.kind && p.stu === s.name && stageOf(p.st) === '게재');
+---
+
+<a
+  href={url}
+  class="card scard text-inherit no-underline"
+  data-slug={s.slug}
+  data-sched={JSON.stringify(s.sched)}
+  aria-label={`${s.name} 상세 보기`}
+>
+  <div class="min-w-0 flex-1">
+    <div class="flex flex-wrap items-center gap-2">
+      <span class="text-[15.5px] font-extrabold text-[var(--ink)]">{s.name}</span>
+      <DegreeBadge deg={s.deg} goal={s.goal} />
+    </div>
+
+    <div class="mt-1 text-[11px] text-[var(--muted)]">
+      {s.kw} · 진로 1순위 <b class="font-bold text-[var(--ink)]">{s.career}</b>
+    </div>
+
+    <div class="mt-[7px] text-[12.5px] text-[var(--ink)]">
+      <span class="inline-block w-14 text-[10.5px] font-bold text-[var(--muted)]">지금</span><span class="snow-v">{nowTxt}</span>
+    </div>
+
+    <div class="mt-[3px] text-[12.5px] text-[var(--ink)]">
+      <span class="inline-block w-14 text-[10.5px] font-bold text-[var(--muted)]">다음</span><span class="smile-v">{nm ? (<Fragment>{nm.n} <span class="d num font-bold">({fmtDday(dday(nm.s))})</span></Fragment>) : '—'}</span>
+    </div>
+
+    {
+      pubs.map((p) => (
+        <div class="mt-[3px] text-[12.5px] text-[var(--ink)]">
+          <span class="inline-block w-14 text-[10.5px] font-bold text-[var(--ok)]">게재 ✓</span>{p.t} — {p.jr} ({p.stEn})
+        </div>
+      ))
+    }
+
+    <SemesterBar
+      reqs={s.reqs.map((r) => ({ st: r.st as '완료' | '진행' | '미착수' }))}
+      elapsed={s.elapsed}
+      remain={s.remain}
+    />
+  </div>
+</a>

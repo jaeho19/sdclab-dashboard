@@ -1,0 +1,28 @@
+---
+// Dashboard status badge (spec §2 SHARED ATOMS). NOTE: this is the dashboard-domain
+// badge, intentionally NOT the projects `src/components/StatusBadge.astro` (whose
+// vocabulary 초기/진행중/마무리/완료 differs).
+//   variant="req"   → 졸업요건 상태  st ∈ {완료|진행|미착수}   → `.badge .rq-*`, text = st
+//   variant="stage" → 논문 심사 단계  stEn (English label)      → `.sten .s-{stEn no-spaces}`, text = stEn
+type ReqStatus = '완료' | '진행' | '미착수';
+interface Props {
+  variant: 'req' | 'stage';
+  /** required when variant="req" */
+  st?: ReqStatus;
+  /** required when variant="stage" — e.g. "Under Review", "Published" */
+  stEn?: string;
+}
+const { variant, st, stEn } = Astro.props;
+const reqClass: Record<ReqStatus, string> = {
+  '완료': 'rq-done',
+  '진행': 'rq-doing',
+  '미착수': 'rq-todo',
+};
+---
+
+{variant === 'req' && st && <span class:list={['badge', reqClass[st]]}>{st}</span>}
+{
+  variant === 'stage' && stEn && (
+    <span class:list={['sten', `s-${stEn.replace(/\s+/g, '')}`]}>{stEn}</span>
+  )
+}

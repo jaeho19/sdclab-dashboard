@@ -1,0 +1,123 @@
+---
+// Semester + requirement segment bar (spec §2 SHARED ATOMS, §4.3; mockup `bars()` L591-598).
+// Row 1 (학기): `elapsed`× filled `.seg.sf` (진한 채움) + `remain`× `.seg.sr` (연회색 채움 + 테두리),
+//   label "{elapsed}학기 지남 · <b class=remain>{remain}학기 남음</b>" (남음 굵게).
+// Row 2 (요건): "{n}개 중 {done} 완료 · {doing} 진행 · 미착수 {todo}".
+//
+// Accepts precomputed `elapsed`/`remain` (primary path — students.json always carries them),
+// OR computes the split from `entry` ("YYYY-N", 학기1=Mar·학기2=Sep) + `total`. When `entry`
+// is supplied, `data-entry`/`data-total` are emitted and the inline script re-flips the
+// segments client-side so the split keeps advancing between rebuilds.
+type ReqStatus = '완료' | '진행' | '미착수';
+interface Props {
+  reqs: { st: ReqStatus }[];
+  /** precomputed elapsed semesters (지남) */
+  elapsed?: number;
+  /** precomputed remaining semesters (남음) */
+  remain?: number;
+  /** total semesters; defaults to elapsed+remain. Needed for the entry-only path. */
+  total?: number;
+  /** "YYYY-N" — enables build + client live-split */
+  entry?: string;
+  /** larger segments (`.bars.big`) for the student header */
+  big?: boolean;
+}
+
+// semesters elapsed from `entry` up to `ref` (학기1 → Mar 1, 학기2 → Sep 1), capped at `tot`.
+function semesterElapsed(entry: string, tot: number, ref: Date): number {
+  const [y, n] = entry.split('-').map((v) => parseInt(v, 10));
+  let year = y;
+  let sem = n;
+  let count = 0;
+  while (count < tot) {
+    const start = new Date(year, sem === 1 ? 2 : 8, 1);
+    if (start.getTime() > ref.getTime()) break;
+    count++;
+    if (sem === 1) sem = 2;
+    else {
+      sem = 1;
+      year++;
+    }
+  }
+  return count;
+}
+
+const { reqs, elapsed, remain, entry, big = false } = Astro.props;
+const total = Astro.props.total ?? (elapsed ?? 0) + (remain ?? 0);
+
+let el = elapsed;
+let rm = remain;
+if ((el == null || rm == null) && entry && total > 0) {
+  const now = new Date();
+  el = semesterElapsed(entry, total, new Date(now.getFullYear(), now.getMonth(), now.getDate()));
+  rm = total - el;
+}
+el = el ?? 0;
+rm = rm ?? 0;
+
+const done = reqs.filter((r) => r.st === '완료').length;
+const doing = reqs.filter((r) => r.st === '진행').length;
+const todo = reqs.length - done - doing;
+const reqSummary = `${reqs.length}개 중 ${done} 완료${doing ? ` · ${doing} 진행` : ''} · 미착수 ${todo}`;
+---
+
+<div class:list={['bars', { big }]} data-entry={entry ?? undefined} data-total={entry ? total : undefined}>
+  <div class="brow">
+    <span class="blbl">학기</span>
+    <span class="segs">
+      {
+        Array.from({ length: total }).map((_, i) => (
+          <span
+            class:list={['seg', i < el ? 'sf' : 'sr']}
+            data-tip={`${i + 1}번째 학기 — ${i < el ? '지남' : '남음'}`}
+          />
+        ))
+      }
+    </span>
+    <span class="bval num" set:html={`${el}학기 지남 · <b class="remain">${rm}학기 남음</b>`} />
+  </div>
+  <div class="brow">
+    <span class="blbl">요건</span>
+    <span class="bval num">{reqSummary}</span>
+  </div>
+</div>
+
+<script>
+  // Live-split: only bars that opted in via data-entry advance client-side.
+  function semesterElapsed(entry: string, tot: number, ref: Date): number {
+    const [y, n] = entry.split('-').map((v) => parseInt(v, 10));
+    let year = y;
+    let sem = n;
+    let count = 0;
+    while (count < tot) {
+      const start = new Date(year, sem === 1 ? 2 : 8, 1);
+      if (start.getTime() > ref.getTime()) break;
+      count++;
+      if (sem === 1) sem = 2;
+      else {
+        sem = 1;
+        year++;
+      }
+    }
+    return count;
+  }
+
+  const t = new Date();
+  const today = new Date(t.getFullYear(), t.getMonth(), t.getDate());
+
+  document.querySelectorAll<HTMLElement>('.bars[data-entry]').forEach((bars) => {
+    const entry = bars.dataset.entry;
+    const total = Number(bars.dataset.total) || 0;
+    if (!entry || !total) return;
+    const el = semesterElapsed(entry, total, today);
+    const rm = total - el;
+    bars.querySelectorAll<HTMLElement>('.seg').forEach((seg, i) => {
+      const past = i < el;
+      seg.classList.toggle('sf', past);
+      seg.classList.toggle('sr', !past);
+      seg.dataset.tip = `${i + 1}번째 학기 — ${past ? '지남' : '남음'}`;
+    });
+    const bval = bars.querySelector('.brow .bval');
+    if (bval) bval.innerHTML = `${el}학기 지남 · <b class="remain">${rm}학기 남음</b>`;
+  });
+</script>

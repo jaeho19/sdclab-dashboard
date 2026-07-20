@@ -1,0 +1,37 @@
+---
+// 연구 정체성 (spec §2 학생 상세 ⑥ 좌측 pane; mockup L751-758).
+// methods→.tg.m(방법), datas→.tg.d(데이터), RQ(null·빈 배열이면 작성 유도 empty state — 절대 지어내지 않음),
+// 기존연구 공백(gap)은 있을 때만. 바깥 `.card`(pane) 래퍼는 페이지가 감싼다.
+interface Props {
+  methods: string[];
+  datas: string[];
+  rq: string[] | null;
+  gap: string | null;
+}
+const { methods, datas, rq, gap } = Astro.props;
+const h3 = 'text-xs uppercase tracking-[.06em] text-[var(--muted)]';
+---
+
+<h3 class:list={['mb-2.5', h3]}>연구 정체성</h3>
+<div class="flex flex-wrap gap-1.5">
+  {methods.map((m) => <span class="tg m">{m}</span>)}
+  {datas.map((d) => <span class="tg d">{d}</span>)}
+</div>
+
+<h3 class:list={['mt-4 mb-2.5', h3]}>연구 질문 (RQ)</h3>
+{
+  rq && rq.length ? (
+    <ul class="rql">{rq.map((q) => <li>{q}</li>)}</ul>
+  ) : (
+    <div class="empty">아직 작성 전 — 시트 '3. 학위논문 연구 계획'에 채우면 여기 표시됩니다.</div>
+  )
+}
+
+{
+  gap && (
+    <Fragment>
+      <h3 class:list={['mt-3.5 mb-2.5', h3]}>기존연구 공백</h3>
+      <p class="m-0 text-[12.5px] text-[var(--muted)]">{gap}</p>
+    </Fragment>
+  )
+}

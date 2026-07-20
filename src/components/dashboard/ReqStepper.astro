@@ -1,0 +1,28 @@
+---
+// 졸업요건 로드맵 — 7노드 지하철 노선도형 stepper (spec §2 학생 상세 ②; mockup L702-707).
+// 완료=초록 ✓ / 진행=주황 펄스 테두리 ~ / 미착수=회색. 노드 아래 .nm=요건명, .st=현재상태(now)||기준(std).
+// 바깥 `.card.stepper` 래퍼(가로 스크롤 컨테이너)는 페이지가 감싼다. 상태는 저장값 → 클라이언트 JS 불필요.
+type ReqStatus = '완료' | '진행' | '미착수';
+interface Req {
+  c: string;
+  std: string;
+  now: string;
+  st: ReqStatus;
+}
+interface Props {
+  reqs: Req[];
+}
+const { reqs } = Astro.props;
+const stepClass = (st: ReqStatus) => (st === '완료' ? 'done' : st === '진행' ? 'doing' : '');
+const mark = (st: ReqStatus) => (st === '완료' ? '✓' : st === '진행' ? '~' : '');
+---
+
+{
+  reqs.map((r) => (
+    <div class:list={['step', stepClass(r.st)]}>
+      <div class="node">{mark(r.st)}</div>
+      <div class="nm">{r.c}</div>
+      <div class="st">{r.now || r.std}</div>
+    </div>
+  ))
+}

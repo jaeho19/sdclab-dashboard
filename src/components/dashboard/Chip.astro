@@ -1,0 +1,28 @@
+---
+// Briefing chip (spec §2 SHARED ATOMS + §4.1). Renders the `.chip` shell with static
+// what/who/det. The `.dday` span gets a build-time D-day (progressive enhancement) and
+// carries `data-date` so the shared client binder can keep it fresh:
+//   n ≤ 14 → `.chip.danger`, n ≤ 45 → `.chip.warn`, no date → `.chip.tbd` + literal "D-?".
+import { dday, fmtDday } from '../../lib/dates';
+
+interface Props {
+  what: string;
+  who: string;
+  det?: string;
+  /** hard date "YYYY-MM-DD"; omit (or set tbd) for an undated chip */
+  d?: string;
+  tbd?: boolean;
+}
+const { what, who, det, d, tbd = false } = Astro.props;
+const isTbd = tbd || !d;
+const n = isTbd ? null : dday(d!);
+const label = isTbd ? 'D-?' : fmtDday(n!);
+const tone = n === null ? undefined : n <= 14 ? 'danger' : n <= 45 ? 'warn' : undefined;
+---
+
+<div class:list={['chip', tone, { tbd: isTbd }]}>
+  <span class="dday num" data-date={isTbd ? undefined : d}>{label}</span>
+  <span class="what">{what}</span>
+  <span class="who">{who}</span>
+  {det && <span class="det">{det}</span>}
+</div>

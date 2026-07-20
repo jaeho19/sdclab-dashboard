@@ -1,0 +1,16 @@
+---
+// Generic card wrapper — applies the `.card` chrome (spec §1b / §2 SHARED ATOMS).
+// Compose extra padding via `pad` and any extra classes (e.g. "scard", "conf", "thread")
+// via `class`, so callers can build `.card.scard`, `.card.gwrap`, etc.
+interface Props {
+  /** padding utility classes, e.g. "p-4" or "p-[8px_16px]" */
+  pad?: string;
+  /** extra classes composed onto the card, e.g. "scard" | "conf" | "heatwrap" */
+  class?: string;
+}
+const { pad = '', class: extra = '' } = Astro.props;
+---
+
+<div class:list={['card', pad, extra]}>
+  <slot />
+</div>

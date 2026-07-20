@@ -1,0 +1,56 @@
+---
+// 학회 발표 계획 (spec §2 학생 상세 ⑤; mockup L731-748).
+// sched의 t==='C' 항목(시작일 오름차순). 배지 상태: 준비 구간 진행 중 / 'D-day 예정'(≤60d amber) / 종료.
+// 발표 제목(가안)은 n을 ' — '로 분리한 뒷부분. 제목 미정이면 안내 문구(작성 유도). 배지는 클라이언트가 D-day 갱신(data-*).
+import { parseDate, parseDateEnd, dday, fmtDday, today } from '../../lib/dates';
+interface Sched {
+  t: string;
+  n: string;
+  s: string;
+  e: string;
+  fix?: string;
+}
+interface Props {
+  rows: Sched[];
+}
+const { rows } = Astro.props;
+const t0 = today().getTime();
+
+function badge(r: Sched): { cls: string; txt: string } {
+  const start = parseDate(r.s).getTime();
+  const end = parseDateEnd(r.e).getTime();
+  if (t0 < start) {
+    const n = dday(r.s);
+    return { cls: n <= 60 ? 'rq-doing' : 'rq-todo', txt: `${fmtDday(n)} 예정` };
+  }
+  if (t0 <= end) return { cls: 'rq-doing', txt: '준비 구간 진행 중' };
+  return { cls: 'rq-done', txt: '종료' };
+}
+// 'YYYY-MM-DD' → 'YYYY.MM'
+const ymDot = (s: string) => s.slice(0, 7).replace('-', '.');
+---
+
+{
+  rows.map((r) => {
+    const b = badge(r);
+    const parts = r.n.split(' — ');
+    const venue = parts[0];
+    const title = parts.slice(1).join(' — ');
+    return (
+      <div class="reqrow">
+        <span class:list={['badge', b.cls, 'num']} data-conf-start={r.s} data-conf-end={r.e}>
+          {b.txt}
+        </span>
+        <b class="min-w-[170px]">{venue}</b>
+        {title ? (
+          <span class="rq-std">{title}</span>
+        ) : (
+          <span class="rq-std opacity-[.65]">발표 제목 미정 — 시트에 기입하면 표시됩니다</span>
+        )}
+        <span class="rq-now num">
+          {ymDot(r.s)} ~ {ymDot(r.e)}
+        </span>
+      </div>
+    );
+  })
+}

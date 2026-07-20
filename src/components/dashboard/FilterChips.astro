@@ -1,0 +1,33 @@
+---
+// Filter chips for /papers (spec §2 FilterChips + §4.4, mock:805-811). Three groups:
+//   주저자 (dynamic from papers) · 등급(전체/KCI/SCI급) · 연도(전체 + fallback years).
+// Renders the `.fc` buttons only; the wrapper `.filters` grid + the client filter behaviour
+// live on the page (papers.astro). "전체" is the initial `.on` in each group.
+interface Paper {
+  stu: string;
+  sub?: string;
+}
+interface Props {
+  /** real papers only (kind === "실제") */
+  papers: Paper[];
+}
+const { papers } = Astro.props;
+
+const authors = ['전체', ...new Set(papers.map((p) => p.stu))];
+const tiers = ['전체', 'KCI', 'SCI급'];
+// real papers currently carry no `sub` → no derivable years; keep static fallback (mock:811)
+const derivedYears = [...new Set(papers.map((p) => p.sub?.slice(0, 4)).filter(Boolean))].sort() as string[];
+const years = ['전체', ...(derivedYears.length ? derivedYears : ['2025', '2026', '2027'])];
+---
+
+{authors.map((n) => (
+  <button class:list={['fc', { on: n === '전체' }]} data-f={n}>{n}</button>
+))}
+<span class="inline-block w-2.5" aria-hidden="true"></span>
+{tiers.map((n) => (
+  <button class:list={['fc', { on: n === '전체' }]} data-t={n}>{n}</button>
+))}
+<span class="inline-block w-2.5" aria-hidden="true"></span>
+{years.map((n) => (
+  <button class:list={['fc', { on: n === '전체' }]} data-y={n}>{n === '전체' ? '전체 연도' : `${n}년`}</button>
+))}

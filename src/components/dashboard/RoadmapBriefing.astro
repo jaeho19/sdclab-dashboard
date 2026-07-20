@@ -1,0 +1,95 @@
+---
+// 오늘의 브리핑 (spec §2 / §3a / §4.1). `briefing.json`이 아직 없어 실제 데이터에서 파생한다
+// (spec §0 / §7 승인된 fallback — 데이터를 지어내지 않음):
+//   (A) 학생별 가장 가까운 다가오는 마감 (심사 t="D" · 투고 t="J")  → 날짜 칩
+//   (B) 학회 레이더의 확정일 미정(tbd) 초록 마감 리마인더            → 점선 "D-?" 칩
+// 각 칩은 `Chip` 원자로 렌더되고, D-day 라벨·톤은 클라이언트가 갱신한다(로드맵 페이지 스크립트).
+import Chip from './Chip.astro';
+import { parseDate, today } from '../../lib/dates';
+
+interface Sched {
+  t: string;
+  n: string;
+  s: string;
+  e: string;
+  fix?: string;
+}
+interface Student {
+  name: string;
+  deg: string;
+  sched: Sched[];
+}
+interface Conference {
+  n: string;
+  when: string;
+  abs: string;
+  tbd: boolean;
+  dl?: string;
+  who: string[];
+  items: string[];
+}
+interface Props {
+  students: Student[];
+  conferences: Conference[];
+}
+const { students, conferences } = Astro.props;
+
+const CAT_NAME: Record<string, string> = {
+  R: '연구·집필',
+  C: '학회',
+  J: '저널투고',
+  D: '심사·졸업',
+};
+const t0 = today();
+
+type Brief = { what: string; who: string; det?: string; d?: string; tbd?: boolean; sort: number };
+
+// 'YYYY-MM-DD' → 'MM/DD', 'YYYY-MM' → 'MM'
+const mmdd = (s: string) => {
+  const p = s.split('-');
+  return p.length >= 3 ? `${p[1]}/${p[2]}` : `${p[1]}`;
+};
+
+// (A) 학생별 가장 가까운 다가오는 심사·투고 마감
+const dated: Brief[] = students
+  .map((s) => {
+    const up = s.sched
+      .filter((r) => (r.t === 'D' || r.t === 'J') && parseDate(r.s).getTime() > t0.getTime())
+      .sort((a, b) => parseDate(a.s).getTime() - parseDate(b.s).getTime());
+    const m = up[0];
+    if (!m) return null;
+    const [label, ...rest] = m.n.split(' — ');
+    const title = rest.join(' — ');
+    return {
+      what: `${s.name} — ${label}`,
+      who: `${s.deg}과정 · ${CAT_NAME[m.t] ?? ''} · ~${mmdd(m.s)}`,
+      det: title || (m.t === 'D' ? '졸업 심사 일정' : '저널 투고 마감'),
+      d: m.s,
+      sort: parseDate(m.s).getTime(),
+    };
+  })
+  .filter((x): x is Brief => x !== null)
+  .sort((a, b) => a.sort - b.sort);
+
+// (B) 학회 초록 마감 리마인더 — 확정일 미정, 가까운 연도 3개
+const yearOf = (n: string) => {
+  const m = n.match(/20\d\d/);
+  return m ? Number(m[0]) : 9999;
+};
+const confBriefs: Brief[] = [...conferences]
+  .sort((a, b) => yearOf(a.n) - yearOf(b.n))
+  .slice(0, 3)
+  .map((c) => ({
+    what: `${c.n} 초록 마감`,
+    who: c.who.join(' · '),
+    det: c.abs,
+    tbd: true,
+    sort: Number.POSITIVE_INFINITY,
+  }));
+
+const briefs: Brief[] = [...dated, ...confBriefs];
+---
+
+<div class="flex gap-2.5 overflow-x-auto pb-1.5">
+  {briefs.map((b) => <Chip what={b.what} who={b.who} det={b.det} d={b.d} tbd={b.tbd} />)}
+</div>

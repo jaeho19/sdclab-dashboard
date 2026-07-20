@@ -1,0 +1,158 @@
+---
+// 졸업 로드맵 (spec §3a; mockup #view-roadmap L294-315, renderers L602-650).
+// 섹션 순서: (1) 오늘의 브리핑 → (2) 학생별 여정(박사→석사) → (3) 졸업요건 히트맵.
+// 데이터는 content/dashboard/*.json 을 직접 import(계획서 §2 / 태스크 지시).
+// D-day·지금·다음·기준일·툴팁은 하단 클라이언트 스크립트가 갱신(주간 리빌드 사이에도 신선하게).
+import Base from '../layouts/Base.astro';
+import RoadmapBriefing from '../components/dashboard/RoadmapBriefing.astro';
+import StudentJourneyCard from '../components/dashboard/StudentJourneyCard.astro';
+import ReqHeatmap from '../components/dashboard/ReqHeatmap.astro';
+import students from '../../content/dashboard/students.json';
+import conferences from '../../content/dashboard/conferences.json';
+import { today } from '../lib/dates';
+
+const t0 = today();
+const pad = (n: number) => String(n).padStart(2, '0');
+const isoToday = `${t0.getFullYear()}-${pad(t0.getMonth() + 1)}-${pad(t0.getDate())}`;
+
+const groups = [
+  { label: '박사', list: students.filter((s) => s.deg === '박사') },
+  { label: '석사', list: students.filter((s) => s.deg === '석사') },
+];
+---
+
+<Base title="졸업 로드맵 · SDC Lab 대시보드">
+  <h1 class="mb-1 text-[1.55rem] font-extrabold tracking-[-.02em] text-balance">졸업 로드맵</h1>
+  <p class="mb-5 text-[13px] text-[var(--muted)]">
+    전일제 석·박사 {students.length}명의 졸업 여정 — 데이터는 구글 시트 「학생 졸업계획서」에서 동기화 (기준일 <span
+      id="basedate"
+      class="num">{isoToday}</span>)
+  </p>
+
+  <h2 class="sec mt-0 mb-3">오늘의 브리핑</h2>
+  <RoadmapBriefing students={students} conferences={conferences} />
+
+  <h2 class="sec mt-7 mb-3">학생별 여정</h2>
+  <p class="mb-3 text-[11.5px] text-[var(--muted)]">
+    학기 줄:
+    <span
+      class="ml-2 mr-[3px] inline-block h-3 w-3 rounded align-[-2px]"
+      style="background:var(--muted)"></span>지난 학기
+    <span
+      class="ml-2 mr-[3px] inline-block h-3 w-3 rounded align-[-2px]"
+      style="background:var(--soft);border:1px solid var(--line)"></span>남은 학기 — 칸에 마우스를 올리면 학기 정보가 보입니다
+  </p>
+  <div>
+    {
+      groups.map((g) => (
+        <Fragment>
+          <h3 class="mt-4 mb-2 text-[11.5px] font-extrabold tracking-[.05em] text-[var(--muted)] first:mt-0">
+            {g.label}과정 · {g.list.length}명
+          </h3>
+          <div class="grid gap-3.5 [grid-template-columns:repeat(auto-fill,minmax(330px,1fr))]">
+            {g.list.map((s) => (
+              <StudentJourneyCard student={s} />
+            ))}
+          </div>
+        </Fragment>
+      ))
+    }
+  </div>
+
+  <h2 class="sec mt-7 mb-3">졸업요건 히트맵</h2>
+  <ReqHeatmap students={students} />
+
+  <div id="tip"></div>
+</Base>
+
+<script>
+  // 로드맵 클라이언트 로직 (spec §4). src/lib/dates 의 파서를 미러링(YYYY-MM 처리).
+  // 공용 src/scripts/dashboard.ts 는 형제 에이전트와의 경합을 피해 만들지 않고,
+  // 로드맵 전용 로직을 이 페이지 스크립트에 자기완결로 담는다.
+  const t = new Date();
+  const TODAY = new Date(t.getFullYear(), t.getMonth(), t.getDate());
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const parse = (s: string) => {
+    const [y, m = 1, d = 1] = s.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  };
+  const parseEnd = (s: string) => {
+    const p = s.split('-').map(Number);
+    const [y, m = 12, d] = p;
+    return d ? new Date(y, m - 1, d) : new Date(y, m, 0);
+  };
+  const dday = (s: string) => Math.ceil((parse(s).getTime() - TODAY.getTime()) / 864e5);
+  const fmtD = (n: number) => (n === 0 ? 'D-DAY' : n > 0 ? `D-${n}` : `D+${-n}`);
+  const esc = (s: string) =>
+    String(s).replace(
+      /[&<>"]/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] || c,
+    );
+
+  // 기준일 — 오늘로 갱신
+  const bd = document.getElementById('basedate');
+  if (bd) bd.textContent = iso(TODAY);
+
+  // (1) 브리핑 칩 — D-day 라벨/톤(≤14 danger · ≤45 warn) 갱신
+  document.querySelectorAll<HTMLElement>('.chip .dday[data-date]').forEach((el) => {
+    const d = el.dataset.date;
+    if (!d) return;
+    const n = dday(d);
+    el.textContent = fmtD(n);
+    const chip = el.closest('.chip');
+    if (chip) {
+      chip.classList.remove('danger', 'warn');
+      if (n <= 14) chip.classList.add('danger');
+      else if (n <= 45) chip.classList.add('warn');
+    }
+  });
+
+  // (2) 학생 여정 카드 — 지금 / 다음(+D-day)
+  document.querySelectorAll<HTMLElement>('.scard[data-sched]').forEach((card) => {
+    let sched: { t: string; n: string; s: string; e: string }[];
+    try {
+      sched = JSON.parse(card.dataset.sched || '[]');
+    } catch {
+      return;
+    }
+    const nowNonConf = sched.filter(
+      (r) => r.t !== 'C' && parse(r.s) <= TODAY && TODAY <= parseEnd(r.e),
+    );
+    const nowTxt = nowNonConf.length
+      ? nowNonConf
+          .map((r) => r.n)
+          .slice(0, 2)
+          .join(' · ')
+      : '진행 중 항목 없음';
+    const snowV = card.querySelector('.snow-v');
+    if (snowV) snowV.textContent = nowTxt;
+
+    const nm = sched
+      .filter((r) => parse(r.s) > TODAY && (r.t === 'D' || r.t === 'J'))
+      .sort((a, b) => parse(a.s).getTime() - parse(b.s).getTime())[0];
+    const smileV = card.querySelector('.smile-v');
+    if (smileV)
+      smileV.innerHTML = nm
+        ? `${esc(nm.n)} <span class="d num font-bold">(${fmtD(dday(nm.s))})</span>`
+        : '—';
+  });
+
+  // (3) 공용 툴팁 (#tip) — 히트맵 셀 · 학기 분절의 [data-tip]
+  const tip = document.getElementById('tip');
+  if (tip) {
+    document.addEventListener('mousemove', (e) => {
+      const target = e.target;
+      const host = target instanceof Element ? target.closest('[data-tip]') : null;
+      if (!host) {
+        tip.style.opacity = '0';
+        return;
+      }
+      tip.textContent = host.getAttribute('data-tip') || '';
+      tip.style.opacity = '1';
+      const tw = tip.offsetWidth;
+      tip.style.left = Math.min(e.clientX + 14, window.innerWidth - tw - 8) + 'px';
+      tip.style.top = e.clientY + 16 + 'px';
+    });
+  }
+</script>

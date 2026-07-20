@@ -1,0 +1,51 @@
+---
+// 투고 논문 파이프라인 (spec §2 학생 상세 ④; mockup L720-729).
+// 이 학생의 실제 논문(papers.json where stu===name). 계획 논문(kind:"계획")은 Phase1이 추가하면 함께 표시.
+// 배지 class = 단계 규칙(게재→done · 집필/투고/심사/수정/재투고→doing · 그 외→todo), 라벨 = stEn||st.
+// .rq-now = 투고/게재목표 연월(계획 논문 필드) + 게재 완료/게재 확정. NEVER 색상만 — 배지에 항상 텍스트 라벨 동반.
+import TierBadge from './TierBadge.astro';
+interface Paper {
+  id: string;
+  kind: string;
+  stu: string;
+  t: string;
+  tier: string;
+  jr: string;
+  st: string;
+  stEn: string;
+  sub?: string;
+  pub?: string;
+}
+interface Props {
+  rows: Paper[];
+}
+const { rows } = Astro.props;
+
+const DOING = ['집필', '투고 완료', '심사 중', '수정 중', '재투고'];
+const stageOf = (p: Paper) => (p.st === '게재확정' ? '게재' : p.st);
+const badgeClass = (p: Paper) =>
+  stageOf(p) === '게재' ? 'rq-done' : DOING.includes(p.st) ? 'rq-doing' : 'rq-todo';
+// 'YYYY-MM-DD' → 'YY.MM'
+const ym = (s?: string) => (s ? s.slice(2, 7).replace('-', '.') : '');
+const nowText = (p: Paper) => {
+  const parts: string[] = [];
+  if (p.sub) parts.push(`투고 ${ym(p.sub)}`);
+  if (p.pub) parts.push(`게재목표 ${ym(p.pub)}`);
+  let tail = parts.join(' · ');
+  if (stageOf(p) === '게재') {
+    tail += (tail ? ' · ' : '') + (p.stEn === 'Accepted' ? '게재 확정' : '게재 완료');
+  }
+  return tail;
+};
+---
+
+{
+  rows.map((p) => (
+    <div class="reqrow">
+      <span class:list={['badge', badgeClass(p)]}>{p.stEn || p.st}</span>
+      <b class="flex-1 min-w-[180px]">{p.t}</b>
+      <TierBadge tier={p.tier} />
+      <span class="rq-now num">{nowText(p)}</span>
+    </div>
+  ))
+}

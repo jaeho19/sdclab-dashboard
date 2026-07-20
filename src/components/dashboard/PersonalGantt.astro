@@ -1,0 +1,103 @@
+---
+// 개인 간트 (spec §2 학생 상세 ⑦; mockup gantt() L653-678).
+// 분기(3개월) 눈금 + 카테고리색 막대(연구=파랑 --c-res · 학회=주황 --c-conf · 투고=초록 --c-jour · 심사=분홍 --c-rev)
+// + 우측 라벨(⚠=보정 note). 오늘선은 클라이언트가 SVG에 추가(리빌드 없이 최신 유지) — student-detail.ts.
+// 부분 날짜(YYYY-MM)는 parseDate/parseDateEnd로 처리(막대 끝은 월말). 모바일 가로 스크롤은 바깥 `.gwrap`(페이지가 감쌈).
+// 색상은 CSS 변수(style="fill:var(--x)")로 지정 — 프레젠테이션 속성 var() 미지원 이슈 회피.
+import { parseDate, parseDateEnd } from '../../lib/dates';
+type CatKey = 'R' | 'C' | 'J' | 'D';
+interface Sched {
+  t: CatKey;
+  n: string;
+  s: string;
+  e: string;
+  fix?: string;
+}
+interface Props {
+  sched: Sched[];
+}
+const { sched } = Astro.props;
+
+const catVar: Record<CatKey, string> = {
+  R: '--c-res',
+  C: '--c-conf',
+  J: '--c-jour',
+  D: '--c-rev',
+};
+
+// ── 구간 계산 (mockup L655-657) ────────────────────
+const min = new Date(Math.min(...sched.map((r) => parseDate(r.s).getTime())));
+min.setDate(1);
+const max = new Date(Math.max(...sched.map((r) => parseDateEnd(r.e).getTime())));
+max.setMonth(max.getMonth() + 1);
+const minT = min.getTime();
+const span = max.getTime() - minT;
+
+const W = Math.max(680, Math.round(span / 86400000 / 2.2));
+const LP = 6;
+const RH = 26;
+const TOP = 26;
+const H = TOP + sched.length * RH + 14;
+const SVGW = W + 330; // 우측 라벨 여백
+const x = (ms: number) => LP + ((ms - minT) / span) * (W - LP - 6);
+
+// ── 분기 눈금 (mockup L661-667) ────────────────────
+const ticks: { xx: number; label: string }[] = [];
+const q = new Date(min);
+q.setMonth(Math.floor(q.getMonth() / 3) * 3, 1);
+for (let d = new Date(q); d < max; d.setMonth(d.getMonth() + 3)) {
+  const xx = x(d.getTime());
+  if (xx < LP) continue;
+  ticks.push({
+    xx,
+    label: `${String(d.getFullYear()).slice(2)}.${Math.floor(d.getMonth() / 3) + 1}Q`,
+  });
+}
+
+// ── 막대 (mockup L668-673) ────────────────────────
+const t = new Date();
+const nowday = new Date(t.getFullYear(), t.getMonth(), t.getDate()).getTime();
+const bars = sched.map((r, i) => {
+  const y = TOP + i * RH;
+  const x1 = x(parseDate(r.s).getTime());
+  const x2 = Math.max(x(parseDateEnd(r.e).getTime()), x1 + 6);
+  const active = parseDate(r.s).getTime() <= nowday && nowday <= parseDateEnd(r.e).getTime();
+  return {
+    y,
+    x1,
+    x2,
+    w: x2 - x1,
+    style: `fill:var(${catVar[r.t]});opacity:${active ? 1 : 0.82}`,
+    tip: `${r.n} · ${r.s} ~ ${r.e}${r.fix ? ` (${r.fix})` : ''}`,
+    label: `${r.n}${r.fix ? ' ⚠' : ''}`,
+  };
+});
+---
+
+<svg
+  width={SVGW}
+  height={H}
+  viewBox={`0 0 ${SVGW} ${H}`}
+  data-gantt
+  data-min={minT}
+  data-span={span}
+  data-w={W}
+  data-lp={LP}
+  data-top={TOP}
+  data-h={H}
+>
+  {ticks.map((tk) => <line x1={tk.xx} y1={TOP - 8} x2={tk.xx} y2={H - 10} class="gline" />)}
+  {ticks.map((tk) => (
+    <text x={tk.xx + 3} y={TOP - 12} class="axis num">
+      {tk.label}
+    </text>
+  ))}
+  {bars.map((b) => (
+    <rect x={b.x1} y={b.y + 5} width={b.w} height="13" rx="4" style={b.style} data-tip={b.tip} />
+  ))}
+  {bars.map((b) => (
+    <text x={b.x2 + 6} y={b.y + 15} class="bar-label" style="fill:var(--ink)">
+      {b.label}
+    </text>
+  ))}
+</svg>

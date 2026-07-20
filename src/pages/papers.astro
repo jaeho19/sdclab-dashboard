@@ -1,0 +1,125 @@
+---
+// 투고 논문 (papers) — READ-ONLY render (spec §3c, mock #view-papers). Phase 2 scope:
+// static, data-driven UI. Client JS here is ONLY the FilterChips filter (§4.4); drag/drop,
+// inline edit, and live sheet fetch are Phase 3 (deliberately NOT implemented). Kanban cards
+// carry data-id / data-status so Phase 3 can attach DnD without re-rendering.
+import Base from '../layouts/Base.astro';
+import Card from '../components/dashboard/Card.astro';
+import KpiTiles from '../components/dashboard/KpiTiles.astro';
+import FilterChips from '../components/dashboard/FilterChips.astro';
+import PaperKanban from '../components/dashboard/PaperKanban.astro';
+import ArchiveList from '../components/dashboard/ArchiveList.astro';
+import ConfRadar from '../components/dashboard/ConfRadar.astro';
+import papersData from '../../content/dashboard/papers.json';
+import conferencesData from '../../content/dashboard/conferences.json';
+
+interface Paper {
+  id: string;
+  kind?: string;
+  stu: string;
+  t: string;
+  tier: string;
+  jr: string;
+  st: string;
+  stEn: string;
+  sub?: string;
+  pub?: string;
+  note?: string;
+}
+
+// /papers shows real papers only (kind === "실제"); planned rows live under the roadmap tab.
+const realPapers = (papersData as Paper[]).filter((p) => p.kind === '실제');
+const stageOf = (p: Paper) => (p.st === '게재확정' ? '게재' : p.st);
+const actCount = realPapers.filter((p) => stageOf(p) !== '게재').length;
+const archCount = realPapers.filter((p) => stageOf(p) === '게재').length;
+---
+
+<Base title="투고 논문 · SDC Lab" description="SDC Lab 실제 투고 논문의 심사 파이프라인·게재 아카이브·학회 레이더">
+  <h1 class="mb-1 text-balance text-[1.55rem] font-extrabold tracking-[-.02em] text-slate-900">투고 논문</h1>
+  <p class="mb-5 text-[13px] text-[var(--muted)]">
+    실제 투고된 논문만 표시 — 투고 중 <span class="num">{actCount}</span>편 · 게재 아카이브 <span class="num">{archCount}</span>편.
+    구상·집필 단계 계획은 졸업 로드맵 탭의 학생 상세에서 확인합니다.
+  </p>
+
+  <div class="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(160px,1fr))]">
+    <KpiTiles papers={realPapers} />
+  </div>
+
+  <h2 class="sec mt-7 mb-3">
+    투고 파이프라인
+    <span class="font-medium normal-case tracking-normal">— 실제 투고된 논문만 (계획 단계 논문은 졸업 로드맵의 학생 상세에서 확인)</span>
+  </h2>
+  <div id="pfilters" class="mb-3.5 flex flex-wrap gap-1.5">
+    <FilterChips papers={realPapers} />
+  </div>
+  <div
+    id="kanban"
+    class="grid gap-2.5 overflow-x-auto [grid-template-columns:repeat(5,minmax(190px,1fr))] max-[1080px]:[grid-template-columns:repeat(5,200px)]"
+  >
+    <PaperKanban papers={realPapers} />
+  </div>
+
+  <h2 class="sec mt-7 mb-3">
+    아카이브 — 게재 완료
+    <span id="arch-count" class="num font-medium normal-case tracking-normal">— {archCount}건</span>
+  </h2>
+  <Card pad="p-[8px_16px]">
+    <ArchiveList papers={realPapers} />
+  </Card>
+
+  <h2 class="sec mt-7 mb-3">학회 레이더</h2>
+  <div class="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(255px,1fr))]">
+    <ConfRadar conferences={conferencesData} />
+  </div>
+</Base>
+
+<script>
+  // FilterChips filter (spec §4.4) — persistent-DOM show/hide (NOT re-render), so Phase 3 DnD
+  // keeps its nodes. Toggles .pcard + archive .reqrow, recomputes column counts + archive count.
+  const box = document.getElementById('pfilters');
+  const archCountEl = document.getElementById('arch-count');
+  const archEmptyEl = document.getElementById('arch-empty');
+  if (box) {
+    const state: Record<string, string> = { f: '전체', t: '전체', y: '전체' };
+    const matches = (el: HTMLElement) => {
+      const stu = el.dataset.stu ?? '';
+      const tier = el.dataset.tier ?? '';
+      const year = el.dataset.year ?? '';
+      const okAuthor = state.f === '전체' || stu === state.f;
+      const okTier = state.t === '전체' || (state.t === 'KCI' ? tier === 'KCI' : tier !== 'KCI');
+      const okYear = state.y === '전체' || !year || year === state.y;
+      return okAuthor && okTier && okYear;
+    };
+    const apply = () => {
+      document.querySelectorAll<HTMLElement>('.pcard[data-id]').forEach((el) => {
+        el.hidden = !matches(el);
+      });
+      document.querySelectorAll<HTMLElement>('.kcol').forEach((col) => {
+        const visible = col.querySelectorAll('.pcard[data-id]:not([hidden])').length;
+        const n = col.querySelector('h4 .n');
+        if (n) n.textContent = String(visible);
+        const empty = col.querySelector<HTMLElement>('.kempty');
+        if (empty) empty.hidden = visible > 0;
+      });
+      let archVisible = 0;
+      document.querySelectorAll<HTMLElement>('.reqrow[data-id]').forEach((el) => {
+        const ok = matches(el);
+        el.hidden = !ok;
+        if (ok) archVisible += 1;
+      });
+      if (archCountEl) archCountEl.textContent = `— ${archVisible}건`;
+      if (archEmptyEl) archEmptyEl.hidden = archVisible > 0;
+    };
+    box.querySelectorAll<HTMLButtonElement>('.fc').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const ds = btn.dataset;
+        const group = ds.f !== undefined ? 'f' : ds.t !== undefined ? 't' : 'y';
+        const attr = group === 'f' ? 'data-f' : group === 't' ? 'data-t' : 'data-y';
+        state[group] = ds[group] ?? '전체';
+        box.querySelectorAll(`[${attr}]`).forEach((b) => b.classList.remove('on'));
+        btn.classList.add('on');
+        apply();
+      });
+    });
+  }
+</script>

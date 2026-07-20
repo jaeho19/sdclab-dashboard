@@ -1,0 +1,52 @@
+---
+// Archive list for /papers (spec §2 ArchiveList, mock:836-843). Rows for papers whose
+// stage resolves to 게재 (게재확정 → 게재). Also filtered by the page's FilterChips, so each
+// row carries data-id / data-status / data-stu / data-tier / data-year. A leading hidden
+// `.kempty` (id=arch-empty) is revealed by the client when a filter hides every row —
+// placed first so `.reqrow:last-child` still drops the trailing border on the last row.
+import TierBadge from './TierBadge.astro';
+import StatusBadge from './StatusBadge.astro';
+
+interface Paper {
+  id: string;
+  stu: string;
+  t: string;
+  tier: string;
+  jr: string;
+  st: string;
+  stEn: string;
+  sub?: string;
+  pub?: string;
+}
+interface Props {
+  /** real papers only (kind === "실제") */
+  papers: Paper[];
+}
+const { papers } = Astro.props;
+
+const stageOf = (p: Paper) => (p.st === '게재확정' ? '게재' : p.st);
+const arch = papers.filter((p) => stageOf(p) === '게재');
+const fmtYM = (s?: string) => (s ? s.slice(0, 7).replace('-', '.') : '');
+const yearOf = (p: Paper) => (p.sub ? p.sub.slice(0, 4) : '');
+---
+
+<div class="kempty" id="arch-empty" hidden style="margin:8px 0">필터 조건에 맞는 게재 논문 없음</div>
+{
+  arch.map((p) => (
+    <div
+      class="reqrow"
+      data-id={p.id}
+      data-status={p.st}
+      data-stu={p.stu}
+      data-tier={p.tier}
+      data-year={yearOf(p)}
+    >
+      <StatusBadge variant="stage" stEn={p.stEn} />
+      <b style="flex:1;min-width:220px">{p.t}</b>
+      <TierBadge tier={p.tier} />
+      <span class="rq-std" style="flex:0 1 auto;min-width:0">{p.jr}</span>
+      <span class="rq-now">주저자 {p.stu}</span>
+      <span class="rq-now num">{p.pub ? `게재 ${fmtYM(p.pub)}` : '게재 연월 기입 필요'}</span>
+    </div>
+  ))
+}

@@ -1,0 +1,17 @@
+---
+// Degree badge (+ optional graduation-goal badge) — spec §2 SHARED ATOMS.
+//   deg  → `.badge .b-phd`(박사) / `.badge .b-ms`(석사), text = deg
+//   goal → optional second `.badge .b-goal`, text = "{goal} 졸업 목표"
+type Degree = '박사' | '석사';
+interface Props {
+  deg: Degree | string;
+  /** when set, renders a second `.b-goal` badge "{goal} 졸업 목표" */
+  goal?: string;
+}
+const { deg, goal } = Astro.props;
+const degClass = deg === '박사' ? 'b-phd' : 'b-ms';
+---
+
+<span class:list={['badge', degClass]}>{deg}</span>{
+  goal && <span class="badge b-goal">{goal} 졸업 목표</span>
+}

@@ -1,0 +1,79 @@
+---
+// KPI tiles for /papers (spec §2 KpiTiles, mock:798-803). Five build-time counts over
+// the REAL-papers set; sub-labels (.x) are DERIVED from data (never the mockup's hardcoded
+// journal strings). KPIs are totals over all real papers — filter chips do NOT affect them.
+interface Paper {
+  id: string;
+  stu: string;
+  tier: string;
+  jr: string;
+  st: string;
+  stEn: string;
+}
+interface Props {
+  /** real papers only (kind === "실제") */
+  papers: Paper[];
+}
+const { papers } = Astro.props;
+
+const stageOf = (p: Paper) => (p.st === '게재확정' ? '게재' : p.st);
+const act = papers.filter((p) => stageOf(p) !== '게재');
+const arch = papers.filter((p) => stageOf(p) === '게재');
+const cnt = (st: string) => act.filter((p) => p.st === st).length;
+
+// group an array by a key, preserving first-seen order → [key, count][]
+const grouped = (arr: Paper[], key: (p: Paper) => string): [string, number][] => {
+  const m = new Map<string, number>();
+  for (const p of arr) m.set(key(p), (m.get(key(p)) ?? 0) + 1);
+  return [...m.entries()];
+};
+
+// tile 2 — distinct journals among 심사 중 (count suffix only when >1)
+const reviewJournals = grouped(
+  act.filter((p) => p.st === '심사 중'),
+  (p) => p.jr,
+)
+  .map(([jr, n]) => (n > 1 ? `${jr} ${n}` : jr))
+  .join(' · ');
+
+// tile 3 — 수정 중 / 재투고 split by English stage label
+const respSub = grouped(
+  act.filter((p) => p.st === '수정 중' || p.st === '재투고'),
+  (p) => p.stEn,
+)
+  .map(([k, n]) => `${k} ${n}`)
+  .join(' · ');
+
+// tile 4 — 거절 논문: journal (author)
+const rejectSub = act
+  .filter((p) => p.st === '거절')
+  .map((p) => `${p.jr} (${p.stu})`)
+  .join(' · ');
+
+// tile 5 — archive split (Accepted / Published)
+const archSub = grouped(arch, (p) => p.stEn)
+  .map(([k, n]) => `${k} ${n}`)
+  .join(' · ');
+
+const tiles = [
+  {
+    v: act.length,
+    k: '투고 중인 연구',
+    x: `투고 ${cnt('투고 완료')} · 심사 ${cnt('심사 중')} · 수정 ${cnt('수정 중')} · 재투고 ${cnt('재투고')} · 거절 ${cnt('거절')}`,
+  },
+  { v: cnt('심사 중'), k: '심사 중', x: reviewJournals },
+  { v: cnt('수정 중') + cnt('재투고'), k: '수정·재투고 대응', x: respSub },
+  { v: cnt('거절'), k: '거절 — 재투고 검토', x: rejectSub },
+  { v: arch.length, k: '아카이브 (게재)', x: archSub },
+];
+---
+
+{
+  tiles.map((t) => (
+    <div class="card kpi">
+      <div class="v num">{t.v}</div>
+      <div class="k">{t.k}</div>
+      <div class="x">{t.x}</div>
+    </div>
+  ))
+}

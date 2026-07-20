@@ -1,0 +1,13 @@
+---
+// Journal-tier chip (spec §2 SHARED ATOMS). Colour class = the raw tier value
+// (`.tier.KCI` / `.tier.SCIE` / `.tier.SSCI` / `.tier.und`); label is humanised:
+//   und → 미정, SCIE → SCI급, KCI/SSCI stay as-is.
+type Tier = 'KCI' | 'SCIE' | 'SSCI' | 'und';
+interface Props {
+  tier: Tier | string;
+}
+const { tier } = Astro.props;
+const label = tier === 'und' ? '미정' : tier === 'SCIE' ? 'SCI급' : tier;
+---
+
+<span class:list={['tier', tier]}>{label}</span>
