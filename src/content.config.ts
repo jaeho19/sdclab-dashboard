@@ -133,28 +133,4 @@ const teaching = defineCollection({
   }),
 });
 
-// ── 연구 연계 · 성과 공유 ────────────────────────────
-const synergy = defineCollection({
-  loader: glob({ pattern: '*.md', base: './content/synergy' }),
-  schema: z.object({
-    intro: z.string().optional(),
-    links: z
-      .array(
-        z.object({
-          id: z.string(),
-          a: z.string(),                    // 과제 slug
-          b: z.string(),                    // 과제 slug
-          title: z.string(),
-          theme: z.string(),               // 연계 맵 간선 라벨(짧게)
-          strength: z.enum(['강', '추가']).default('강'),
-          shared: z
-            .array(z.object({ from: z.string(), to: z.string(), asset: z.string(), how: z.string() }))
-            .default([]),
-          outputs: z.array(z.string()).default([]),
-        }),
-      )
-      .default([]),
-  }),
-});
-
-export const collections = { projects, teaching, synergy };
+export const collections = { projects, teaching };

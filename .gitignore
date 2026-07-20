@@ -36,3 +36,6 @@ scripts/daily-curate.log
 
 # local hidden launcher (Task Scheduler, machine-specific)
 scripts/run-hidden.vbs
+
+# 목업 참조 사본 (학생 실데이터 포함 — 공개 repo에 커밋 금지)
+docs/mockup-reference.html
