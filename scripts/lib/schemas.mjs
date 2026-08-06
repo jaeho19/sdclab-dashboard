@@ -58,6 +58,8 @@ export const PaperSchema = z.object({
   jr: z.string().nullable(),
   st: z.enum(['투고 완료', '심사 중', '수정 중', '재투고', '거절', '게재확정', '게재']),
   stEn: z.enum(['Submitted', 'Under Review', 'Under Revision', 'Resubmitted', 'Rejected', 'Accepted', 'Published']),
+  // 트래커 비고·메모 열 → 칸반 카드 하단 경고줄. 열이 없거나 빈칸이면 생략된다.
+  note: z.string().nullish(),
 });
 export const PapersSchema = z.array(PaperSchema);
 

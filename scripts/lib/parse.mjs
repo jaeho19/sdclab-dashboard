@@ -175,9 +175,24 @@ export function parseComment(ws) {
 // ── 투고논문 트래커 (06_투고논문) ────────────────────────
 
 /** R##·A## 행만 papers[]로 (§6). P## 제외. 반환 { papers, excludedP }. */
+/**
+ * 트래커 헤더행(1행)에서 비고·메모 열을 찾아 열 문자를 돌려준다. 열 위치가 트래커마다
+ * 다를 수 있어 고정 letter 대신 헤더 텍스트로 탐지한다. 못 찾으면 null → note 생략.
+ */
+function findNoteCol(ws) {
+  const re = /비고|메모|노트|코멘트|특이\s*사항|note|remark/i;
+  for (let c = 1; c <= (ws.columnCount || 0); c++) {
+    const letter = ws.getColumn(c).letter;
+    if (re.test(flat(cellStr(ws, `${letter}1`)))) return letter;
+  }
+  return null;
+}
+
 export function parsePapers(ws, warnings) {
   const papers = [];
   let excludedP = 0;
+  const noteCol = findNoteCol(ws);
+  if (!noteCol) warnings.push('[paper-note] 트래커에 비고·메모 열 없음 → note 생략');
   ws.eachRow((row, rowNum) => {
     if (rowNum === 1) return; // 헤더
     const id = flat(cellStr(ws, `A${rowNum}`));
@@ -186,18 +201,19 @@ export function parsePapers(ws, warnings) {
       return;
     }
     if (!/^[RA]\d{2}$/.test(id)) return; // R·A만 (빈행·기타 제외)
-    papers.push(buildPaper(ws, rowNum, id, warnings));
+    papers.push(buildPaper(ws, rowNum, id, warnings, noteCol));
   });
   return { papers, excludedP };
 }
 
-function buildPaper(ws, r, id, warnings) {
+function buildPaper(ws, r, id, warnings, noteCol) {
   const statusRaw = flat(cellStr(ws, `H${r}`));
   const status = PAPER_STATUS[statusRaw];
   if (!status) warnings.push(`[paper-status] ${id}: 미지 상태 '${statusRaw}'`);
   const tierRaw = flat(cellStr(ws, `E${r}`));
   const tier = TIER[tierRaw];
   if (!tier) warnings.push(`[paper-tier] ${id}: 미지 등급 '${tierRaw}' → und`);
+  const note = noteCol ? textOrNull(flat(cellStr(ws, `${noteCol}${r}`))) : null;
   return {
     id,
     kind: '실제',
@@ -207,6 +223,8 @@ function buildPaper(ws, r, id, warnings) {
     jr: textOrNull(cellStr(ws, `F${r}`)),
     st: status ? status.st : statusRaw,
     stEn: status ? status.stEn : 'Submitted',
+    // 비어 있으면 키 자체를 넣지 않는다 — 칸반의 warnline이 note 유무로 렌더된다.
+    ...(note ? { note } : {}),
   };
 }
 
