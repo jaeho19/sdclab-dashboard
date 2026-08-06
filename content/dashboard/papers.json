@@ -17,7 +17,8 @@
     "tier": "SCIE",
     "jr": "Cities",
     "st": "거절",
-    "stEn": "Rejected"
+    "stEn": "Rejected",
+    "note": "After Sunset 수정본 제출 후 약 2주 뒤 수정 착수 예정"
   },
   {
     "id": "R03",
@@ -56,8 +57,8 @@
     "t": "여주시 정주만족도 유형 분류 및 공간적 결정요인 분석 연구",
     "tier": "KCI",
     "jr": "한국농촌계획학회",
-    "st": "투고 완료",
-    "stEn": "Submitted"
+    "st": "심사 중",
+    "stEn": "Under Review"
   },
   {
     "id": "R07",
@@ -67,7 +68,8 @@
     "tier": "SCIE",
     "jr": "Cities",
     "st": "심사 중",
-    "stEn": "Under Review"
+    "stEn": "Under Review",
+    "note": "수정본 제출 마감 2026-09-17"
   },
   {
     "id": "R08",
@@ -86,8 +88,8 @@
     "t": "디지털 페르소나의 단계적 구축과 농촌 정주여건 설문의 대체 가능성: 여주시 9개 읍면을 대상으로 한 탐색적 검증",
     "tier": "KCI",
     "jr": "한국농촌계획학회",
-    "st": "투고 완료",
-    "stEn": "Submitted"
+    "st": "심사 중",
+    "stEn": "Under Review"
   },
   {
     "id": "A01",
