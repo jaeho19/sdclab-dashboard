@@ -709,6 +709,24 @@ body {
     font-weight: 600;
     margin-top: 5px;
   }
+  /* 거절 카드 — 끝난 건이라 색을 빼고 회색으로 눌러 둔다. 배지·제목만 죽이고 저널·주저자
+     글자색은 그대로 둬서 대비가 떨어지지 않게 한다. hover 하면 원래 색으로 돌아온다. */
+  .pcard[data-status='거절'] {
+    background: #fafbfc;
+    border-color: #dfe3ea;
+    border-left: 3px solid #aab2c0;
+    box-shadow: none;
+    filter: grayscale(1);
+    transition: filter 0.15s;
+  }
+  .pcard[data-status='거절']:hover {
+    filter: none;
+    box-shadow: var(--shadow);
+  }
+  .pcard[data-status='거절'] .t {
+    font-weight: 600;
+    color: #4b5262;
+  }
   .kempty {
     border: 1.5px dashed var(--line);
     border-radius: 10px;
