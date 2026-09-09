@@ -5,6 +5,7 @@
 // Each column has a hidden `.kempty` the client reveals when a filter empties the column.
 import TierBadge from './TierBadge.astro';
 import StatusBadge from './StatusBadge.astro';
+import FundChip from './FundChip.astro';
 
 interface Paper {
   id: string;
@@ -14,6 +15,7 @@ interface Paper {
   jr: string;
   st: string;
   stEn: string;
+  fund?: string | null;
   sub?: string;
   note?: string;
 }
@@ -50,6 +52,7 @@ const yearOf = (p: Paper) => (p.sub ? p.sub.slice(0, 4) : '');
               <TierBadge tier={p.tier} />
               <StatusBadge variant="stage" stEn={p.stEn} />
               <span class="stu2">주저자 {p.stu}</span>
+              <FundChip fund={p.fund} />
             </div>
             <div class="m">
               <span class="jr">{p.jr}</span>

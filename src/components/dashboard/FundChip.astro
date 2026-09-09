@@ -1,0 +1,13 @@
+---
+// 사사(연구비 출처) 칩 (spec §2 SHARED ATOMS). TierBadge·StatusBadge 와 같은 자리에 붙는다.
+// 값이 있으면 연한 회색 칩, 없으면 점선 테두리의 '사사 기입 필요' 안내 — 아직 사사를
+// 채우지 않은 논문이 눈에 띄도록 한 것으로, 카드의 '투고 연월 기입 필요'와 같은 규칙이다.
+interface Props {
+  /** papers.json 의 fund. 없거나 빈 문자열이면 미기입 안내로 렌더된다. */
+  fund?: string | null;
+}
+const { fund } = Astro.props;
+const label = fund?.trim();
+---
+
+{label ? <span class="fund">사사 {label}</span> : <span class="fund none">사사 기입 필요</span>}

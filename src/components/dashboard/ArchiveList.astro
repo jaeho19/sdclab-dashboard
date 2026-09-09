@@ -6,6 +6,7 @@
 // placed first so `.reqrow:last-child` still drops the trailing border on the last row.
 import TierBadge from './TierBadge.astro';
 import StatusBadge from './StatusBadge.astro';
+import FundChip from './FundChip.astro';
 
 interface Paper {
   id: string;
@@ -15,6 +16,7 @@ interface Paper {
   jr: string;
   st: string;
   stEn: string;
+  fund?: string | null;
   sub?: string;
   pub?: string;
 }
@@ -46,6 +48,7 @@ const yearOf = (p: Paper) => (p.sub ? p.sub.slice(0, 4) : '');
       <TierBadge tier={p.tier} />
       <span class="rq-std" style="flex:0 1 auto;min-width:0">{p.jr}</span>
       <span class="rq-now">주저자 {p.stu}</span>
+      <FundChip fund={p.fund} />
       <span class="rq-now num">{p.pub ? `게재 ${fmtYM(p.pub)}` : '게재 연월 기입 필요'}</span>
     </div>
   ))

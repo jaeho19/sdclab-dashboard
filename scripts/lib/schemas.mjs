@@ -58,6 +58,9 @@ export const PaperSchema = z.object({
   jr: z.string().nullable(),
   st: z.enum(['투고 완료', '심사 중', '수정 중', '재투고', '거절', '게재확정', '게재']),
   stEn: z.enum(['Submitted', 'Under Review', 'Under Revision', 'Resubmitted', 'Rejected', 'Accepted', 'Published']),
+  // 사사(연구비 출처) 라벨 — 예: '신진연구' '생애첫연구' '워케이션'. 없으면 카드에
+  // '사사 기입 필요'가 뜬다. 트래커에는 없는 열이라 직접 편집으로만 채워진다.
+  fund: z.string().nullish(),
   // 트래커 비고·메모 열 → 칸반 카드 하단 경고줄. 열이 없거나 빈칸이면 생략된다.
   note: z.string().nullish(),
 });

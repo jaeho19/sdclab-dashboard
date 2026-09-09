@@ -7,7 +7,8 @@
     "tier": "SCIE",
     "jr": "Urban Climate",
     "st": "거절",
-    "stEn": "Rejected"
+    "stEn": "Rejected",
+    "fund": "신진연구"
   },
   {
     "id": "R02",
@@ -18,6 +19,7 @@
     "jr": "Cities",
     "st": "거절",
     "stEn": "Rejected",
+    "fund": "신진연구",
     "note": "After Sunset 수정본 제출 후 약 2주 뒤 수정 착수 예정"
   },
   {
@@ -28,7 +30,8 @@
     "tier": "SCIE",
     "jr": "Journal of Transport & Health",
     "st": "수정 중",
-    "stEn": "Under Revision"
+    "stEn": "Under Revision",
+    "fund": "신진연구"
   },
   {
     "id": "R04",
@@ -38,7 +41,8 @@
     "tier": "SCIE",
     "jr": "International Journal of Urban Sciences",
     "st": "재투고",
-    "stEn": "Resubmitted"
+    "stEn": "Resubmitted",
+    "fund": "생애첫연구"
   },
   {
     "id": "R05",
@@ -49,6 +53,7 @@
     "jr": "International Journal of Urban Sciences",
     "st": "재투고",
     "stEn": "Resubmitted",
+    "fund": "교내 연구과제",
     "sub": "2026-09"
   },
   {
@@ -70,6 +75,7 @@
     "jr": "Cities",
     "st": "수정 중",
     "stEn": "Under Revision",
+    "fund": "신진연구",
     "note": "수정본 제출 마감 2026-09-17"
   },
   {
@@ -80,7 +86,8 @@
     "tier": "SCIE",
     "jr": "Sensors and Materials",
     "st": "심사 중",
-    "stEn": "Under Review"
+    "stEn": "Under Review",
+    "fund": "워케이션"
   },
   {
     "id": "R09",
@@ -90,17 +97,30 @@
     "tier": "KCI",
     "jr": "한국농촌계획학회",
     "st": "재투고",
-    "stEn": "Resubmitted"
+    "stEn": "Resubmitted",
+    "fund": "중견연구 인문사회"
   },
   {
     "id": "R10",
     "kind": "실제",
-    "stu": "황지윤",
+    "stu": "이재호",
     "t": "행동기반 공원 매력도를 반영한 공원녹지 서비스 취약지역 진단† - 서울시 9개 자치구 순차 2SFCA",
     "tier": "KCI",
     "jr": "한국조경학회",
     "st": "심사 중",
-    "stEn": "Under Review"
+    "stEn": "Under Review",
+    "fund": "신진연구"
+  },
+  {
+    "id": "R11",
+    "kind": "실제",
+    "stu": "황지윤",
+    "t": "공원과 수변 공간 접근성 지표와 아파트 가격 - 서울 동대문구와 성동구 비교를 통한 측정 진단",
+    "tier": "KCI",
+    "jr": "한국조경학회",
+    "st": "심사 중",
+    "stEn": "Under Review",
+    "fund": "신진연구"
   },
   {
     "id": "A01",

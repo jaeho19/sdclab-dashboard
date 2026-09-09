@@ -753,6 +753,24 @@ body {
     background: var(--t-und);
   }
 
+  /* 사사(연구비 출처) 칩 — 등급 배지와 같은 크기지만 채도를 뺀 회색으로, 주저자 옆에서
+     보조 정보로 읽히게 한다. 아직 채우지 않은 건은 점선 테두리로 눈에 띄게 남겨 둔다. */
+  .fund {
+    font-size: 9.5px;
+    font-weight: 700;
+    padding: 1.5px 6px;
+    border-radius: 5px;
+    background: var(--soft);
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .fund.none {
+    background: transparent;
+    border: 1px dashed var(--line);
+    font-weight: 600;
+    padding: 0.5px 5px;
+  }
+
   /* conference radar */
   .conf {
     padding: 14px 16px;
