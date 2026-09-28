@@ -1423,7 +1423,7 @@ grep -rn "PaperKanban\|ArchiveList\|KpiTiles\|FilterChips" src   # 기대: 출�
     font: inherit;
     font-size: 11px;
     line-height: 1.45;
-    color: #3f4756;
+    color: var(--ink);
     background: var(--soft);
     border: 1px solid transparent;
     border-radius: 8px;
