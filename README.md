@@ -28,7 +28,7 @@
 `/papers` 페이지 제목 옆 **편집** 스위치를 켜면 카드 드래그(열 이동·순서), 메모, 아카이브(게재확정) 이동·복원,
 `⋯` 메뉴의 수정(제목·주저자·저널·등급·사사·투고/게재 연월·상태)·삭제, `새 논문 +` 추가가 됩니다.
 저장은 즉시 이루어지며(`/api/papers` → Netlify Blobs) **재배포가 필요 없고**, 다른 기기·학생 화면에도 바로 반영됩니다.
-인증은 없습니다(링크를 아는 사람은 누구나 편집 가능). 필요해지면 `netlify env:set PAPERS_EDIT_PIN <값>` 한 줄로 PIN을 켤 수 있습니다.
+인증은 없습니다(링크를 아는 사람은 누구나 편집 가능). 필요해지면 `netlify env:set PAPERS_EDIT_PIN <값>` 을 실행하고 한 번 더 배포하면 편집 시 PIN을 요구합니다.
 
 - 정본: Netlify Blobs(`papers/state`). `content/dashboard/papers.json` 은 **씨앗이자 백업**입니다.
   `npm run build` 앞에 `scripts/papers-sync.mjs pull` 이 자동으로 돌아 최신본을 이 파일에 반영하므로
