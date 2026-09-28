@@ -1869,6 +1869,8 @@ git commit -m "feat(papers): live-load board from /api/papers with offline fallb
 ---
 ### Task 7: 편집 스위치 · 낙관적 저장 · 드래그 이동 · 카드 메뉴(이동/아카이브/복원/게재 전환)
 
+> **실행 중 확정된 변경(2026-09-28, Task 7 리뷰):** 드롭은 **항상 `index`를 보낸다**. `dropIndex()`(Task 6)는 다음 카드가 없거나 못 찾으면 `undefined` 대신 그룹 끝(= 드래그 카드를 뺀 남은 구성원 수)을 돌려주고, 드롭 핸들러는 `commit({ op: 'move', id, st, index })`로 보낸다. 이유: `index` 없는 `move`는 같은 그룹이면 '제자리 상태 변경'이라 같은 열 맨 아래로 끌었을 때 카드가 움직이지 않았다. `client.test.ts`의 dropIndex 테스트도 그에 맞게 바뀌었다. 아래 코드 블록은 원안이며 실제 코드는 수정 커밋 이후 상태가 정본이다.
+
 **Files:**
 - Modify: `src/scripts/papers-board.ts` (import 확장, 상수, `load()` 수정, 토스트·편집 스위치·commit·DnD·메뉴 섹션 추가)
 - Modify: `src/styles/global.css` (드래그·메뉴·저장 중 스타일)
