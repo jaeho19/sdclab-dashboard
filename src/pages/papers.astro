@@ -101,6 +101,7 @@ const { act: actCount, arch: archCount } = summary(papers);
     <form method="dialog">
       <h3 id="pin-title">편집 PIN</h3>
       <p class="hint">이 사이트는 편집 PIN이 설정되어 있습니다. 한 번 입력하면 이 브라우저에 기억됩니다.</p>
+      <p class="pd-err pin-hint" role="alert" hidden></p>
       <label>PIN <input name="pin" type="password" autocomplete="off" /></label>
       <div class="pd-actions">
         <span class="spacer"></span>

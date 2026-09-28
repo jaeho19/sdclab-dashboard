@@ -2,7 +2,7 @@
 // 사용자 입력은 전부 esc()를 거친다. 마크업·클래스는 예전 KpiTiles/FilterChips/PaperKanban/ArchiveList.astro와
 // TierBadge/StatusBadge/FundChip.astro의 출력을 그대로 옮겼다(스타일은 global.css의 기존 규칙).
 import type { Paper } from './model.ts';
-import { KANBAN_STATUSES, isArchived, stageOf } from './model.ts';
+import { KANBAN_STATUSES, LIMITS, isArchived, stageOf } from './model.ts';
 
 export interface ViewOpts {
   editing?: boolean;
@@ -36,7 +36,7 @@ const dataAttrs = (p: Paper): string =>
 // 메모: 열람 모드는 있을 때만 회색 상자, 편집 모드는 항상 textarea(없는 메모도 새로 적을 수 있게).
 function memoBox(p: Paper, editing: boolean): string {
   if (editing) {
-    return `<textarea class="memo" data-note="${esc(p.id)}" rows="1" placeholder="메모…" aria-label="메모">${esc(p.note ?? '')}</textarea>`;
+    return `<textarea class="memo" data-note="${esc(p.id)}" rows="1" maxlength="${LIMITS.note}" placeholder="메모…" aria-label="메모">${esc(p.note ?? '')}</textarea>`;
   }
   return p.note ? `<div class="memo view">${esc(p.note)}</div>` : '';
 }

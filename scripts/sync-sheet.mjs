@@ -5,7 +5,7 @@
 //   comments.json (교수 코멘트·학생 답변)            → gitignore(프라이버시)
 //
 // 단, 투고논문 트래커 워크북이 없으면 papers.json은 생성하지 않고 그대로 둔다.
-// 트래커가 소실된 뒤로 papers.json이 논문 데이터의 정본이며 직접 편집한다. (README 참고)
+// papers.json은 웹 편집 저장소(Netlify Blobs)의 시드/백업이며, scripts/papers-sync.mjs pull로 최신 상태를 받아온다.
 //
 // 실행: node scripts/sync-sheet.mjs  (반드시 repo 루트에서 — exceljs 임포트 해석)
 
@@ -72,10 +72,10 @@ async function main() {
 /**
  * 트래커: 메인 워크북의 06_투고논문 우선, 없으면 로컬 폴백 (명세 §0).
  *
- * 둘 다 없으면 throw 하지 않고 paperWs=null 을 돌려준다. 트래커 워크북이 사라진 뒤로
- * content/dashboard/papers.json 자체가 논문 데이터의 정본이므로, 동기화는 그 파일을
- * 건드리지 않고 학생·학회만 갱신해야 한다. (예전에는 여기서 예외를 던져 동기화 전체가
- * 중단됐고, 그 바람에 학생·학회 데이터까지 갱신할 수 없었다.)
+ * 둘 다 없으면 throw 하지 않고 paperWs=null 을 돌려준다. papers.json은 웹 편집 저장소의
+ * 시드/백업이며 scripts/papers-sync.mjs pull로 갱신하는 파일이므로, 트래커가 없을 때 이
+ * 동기화는 그 파일을 건드리지 않고 학생·학회만 갱신해야 한다. (예전에는 여기서 예외를
+ * 던져 동기화 전체가 중단됐고, 그 바람에 학생·학회 데이터까지 갱신할 수 없었다.)
  */
 async function resolvePaperSource(wbMain) {
   const inMain = wbMain.getWorksheet(PAPER_TAB);
@@ -87,7 +87,7 @@ async function resolvePaperSource(wbMain) {
   } catch (err) {
     if (err.code !== 'ENOENT' && !/not found|no such file/i.test(err.message)) throw err;
     console.warn('[sync] 폴백 트래커도 없음 → papers.json은 손대지 않고 학생·학회만 동기화');
-    return { paperWs: null, paperSource: '없음 — papers.json을 정본으로 유지' };
+    return { paperWs: null, paperSource: '없음 — papers.json(웹 편집 저장소 시드)은 그대로 둠' };
   }
   const ws = wbFallback.getWorksheet(PAPER_TAB);
   if (!ws) throw new Error(`폴백 파일에도 '${PAPER_TAB}' 탭 없음: ${PAPER_FALLBACK}`);

@@ -4,7 +4,7 @@
 // 이벤트는 컨테이너에 위임한다 → 다시 그려도 재바인딩 불필요. 렌더 템플릿은 src/lib/papers/view.ts(빌드와 동일).
 import type { Paper, PapersDoc, Status } from '../lib/papers/model.ts';
 import { applyOp, groupOf, isArchived, KANBAN_STATUSES } from '../lib/papers/model.ts';
-import { renderArchive, renderChips, renderKanban, renderKpis, summary } from '../lib/papers/view.ts';
+import { renderArchive, renderChips, renderKanban, renderKpis, summary, yearOf } from '../lib/papers/view.ts';
 import type { FilterState } from '../lib/papers/view.ts';
 import { apiUrlFor, debounce, dropIndex, fmtUpdated } from '../lib/papers/client.ts';
 
@@ -51,6 +51,7 @@ function render(): void {
   if (!els.kpis || !els.filters || !els.kanban || !els.archive) return;
   const o = { editing };
   if (!doc.papers.some((p) => p.stu === filter.f)) filter.f = '전체'; // 삭제된 주저자 필터 해제
+  if (filter.y !== '전체' && !doc.papers.some((p) => yearOf(p) === filter.y)) filter.y = '전체';
   els.kpis.innerHTML = renderKpis(doc.papers);
   els.filters.innerHTML = renderChips(doc.papers, filter);
   els.kanban.innerHTML = renderKanban(doc.papers, o);
@@ -233,7 +234,7 @@ async function post(op: Op): Promise<ApiDoc> {
   const r = await fetch(API, { method: 'POST', headers, body: JSON.stringify(op) });
   const body = (await r.json().catch(() => ({}))) as Partial<ApiDoc> & { error?: string };
   if (r.status === 401) {
-    if (await askPin()) return post(op); // PIN을 받았으면 같은 요청을 다시 보낸다
+    if (await askPin(pin ? 'PIN이 올바르지 않습니다. 다시 입력하세요.' : '')) return post(op); // PIN을 받았으면 같은 요청을 다시 보낸다
     throw new Error(body.error || 'PIN이 필요합니다');
   }
   if (!r.ok || !body.ok) throw new Error(body.error || `HTTP ${r.status}`);
@@ -275,9 +276,13 @@ dropLine.className = 'drop-line';
 
 document.addEventListener('dragstart', (e) => {
   const card = (e.target as Element | null)?.closest?.<HTMLElement>('[data-id][draggable="true"]');
-  if (!card || !editing) return;
+  if (!card || !editing) {
+    dragId = null;
+    return;
+  }
   dragId = card.dataset.id ?? null;
   e.dataTransfer?.setData('text/plain', dragId ?? ''); // Firefox는 setData 없이는 드래그를 시작하지 않는다
+  e.dataTransfer?.setData('application/x-papers-id', dragId ?? '');
   if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
   card.classList.add('dragging');
 });
@@ -286,6 +291,9 @@ document.addEventListener('dragend', () => {
   dropLine.remove();
   document.querySelectorAll('.dragging, .drop-target').forEach((el) => el.classList.remove('dragging', 'drop-target'));
 });
+
+/** 카드 자신의 드래그인지: 외부 드래그(텍스트 선택·링크·파일)는 이 커스텀 데이터 타입을 갖지 않는다. dragover 중에도 types는 읽을 수 있다(getData는 못 읽어도). */
+const isPaperDrag = (e: DragEvent): boolean => !!e.dataTransfer && Array.from(e.dataTransfer.types).includes('application/x-papers-id');
 
 /** 열 안에서 포인터 아래에 올 첫 카드(보이는 것만, 드래그 중 카드 제외). 없으면 null = 열 끝. */
 function nextCardAt(col: HTMLElement, y: number): HTMLElement | null {
@@ -299,7 +307,7 @@ function nextCardAt(col: HTMLElement, y: number): HTMLElement | null {
 }
 
 els.kanban?.addEventListener('dragover', (e) => {
-  if (!dragId) return;
+  if (!dragId || !isPaperDrag(e)) return;
   const col = (e.target as Element).closest<HTMLElement>('.kcol');
   if (!col) return;
   e.preventDefault();
@@ -308,11 +316,13 @@ els.kanban?.addEventListener('dragover', (e) => {
   col.insertBefore(dropLine, next ?? col.querySelector('.kempty'));
 });
 els.kanban?.addEventListener('drop', (e) => {
-  if (!dragId) return;
+  if (!dragId || !isPaperDrag(e)) return;
   const col = (e.target as Element).closest<HTMLElement>('.kcol');
   if (!col) return;
   e.preventDefault();
-  const id = dragId;
+  const id = e.dataTransfer?.getData('application/x-papers-id') || dragId;
+  dragId = null;
+  if (!id) return;
   const st = col.dataset.stage as Status;
   const next = nextCardAt(col, e.clientY);
   // index는 항상 보낸다(끝이면 그룹 구성원 수) — 같은 열 맨 아래로 끌었을 때도 이동하도록. 서버 placeInGroup과 같은 셈법.
@@ -324,7 +334,7 @@ els.kanban?.addEventListener('drop', (e) => {
 
 // 아카이브 박스에 놓으면 게재확정(Accepted). 이미 아카이브된 행은 대상이 아니다.
 els.archiveBox?.addEventListener('dragover', (e) => {
-  if (!dragId) return;
+  if (!dragId || !isPaperDrag(e)) return;
   const p = doc.papers.find((x) => x.id === dragId);
   if (!p || isArchived(p)) return;
   e.preventDefault();
@@ -334,8 +344,11 @@ els.archiveBox?.addEventListener('dragleave', (e) => {
   if (!els.archiveBox?.contains(e.relatedTarget as Node | null)) els.archiveBox?.classList.remove('drop-target');
 });
 els.archiveBox?.addEventListener('drop', (e) => {
-  if (!dragId) return;
-  const p = doc.papers.find((x) => x.id === dragId);
+  if (!dragId || !isPaperDrag(e)) return;
+  const id = e.dataTransfer?.getData('application/x-papers-id') || dragId;
+  dragId = null;
+  if (!id) return;
+  const p = doc.papers.find((x) => x.id === id);
   if (!p || isArchived(p)) return;
   e.preventDefault();
   els.archiveBox?.classList.remove('drop-target');
@@ -535,37 +548,55 @@ pdDelete?.addEventListener('click', () => {
 });
 els.newBtn?.addEventListener('click', () => openDialog(null));
 
-// ── PIN 여지: 서버가 401을 주면 묻고 localStorage에 기억 ─────────────
-function askPin(): Promise<boolean> {
-  return new Promise((resolve) => {
+// ── PIN 여지: 서버가 401을 주면 묻고 localStorage에 기억. close 이벤트로만 끝나므로 Esc·취소·확인 어느 쪽이든 promise가 반드시 정리된다. ──
+let pinPending: Promise<boolean> | null = null;
+function askPin(hint = ''): Promise<boolean> {
+  if (pinPending) return pinPending; // 동시에 401이 여러 개 와도 대화상자는 하나, 결과는 공유
+  pinPending = new Promise((resolve) => {
     const d = els.pinDialog;
     const f = d?.querySelector('form');
-    if (!d || !f) return resolve(false);
+    if (!d || !f) {
+      pinPending = null;
+      return resolve(false);
+    }
     try {
       localStorage.removeItem(LS_PIN); // 틀린 PIN이 남아 있으면 지운다
     } catch {
       /* 무시 */
     }
     f.reset();
-    const finish = (ok: boolean) => {
-      d.close();
-      resolve(ok);
-    };
+    const hintEl = d.querySelector<HTMLElement>('.pin-hint');
+    if (hintEl) {
+      hintEl.hidden = !hint;
+      hintEl.textContent = hint;
+    }
+    let ok = false;
     f.onsubmit = (e) => {
       e.preventDefault();
       const v = String(new FormData(f).get('pin') ?? '').trim();
-      if (!v) return finish(false);
-      try {
-        localStorage.setItem(LS_PIN, v);
-      } catch {
-        /* 무시 */
+      if (v) {
+        try {
+          localStorage.setItem(LS_PIN, v);
+        } catch {
+          /* 무시 */
+        }
+        ok = true;
       }
-      finish(true);
+      d.close();
     };
-    d.querySelector<HTMLButtonElement>('#pin-cancel')?.addEventListener('click', () => finish(false), { once: true });
+    d.addEventListener(
+      'close',
+      () => {
+        pinPending = null;
+        resolve(ok);
+      },
+      { once: true },
+    );
     d.showModal();
   });
+  return pinPending;
 }
+$('#pin-cancel')?.addEventListener('click', () => els.pinDialog?.close()); // 한 번만 등록
 
 // ── 부팅 ─────────────────────────────────────────────
 void load();

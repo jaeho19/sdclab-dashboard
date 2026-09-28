@@ -41,6 +41,7 @@ test('renderCard: 편집 모드 → draggable·메뉴 버튼·textarea(메모 �
   assert.ok(html.includes('draggable="true"'));
   assert.ok(html.includes('data-menu="R03"'));
   assert.ok(html.includes('<textarea class="memo" data-note="R03"'));
+  assert.ok(html.includes('maxlength="2000"'));
   assert.ok(html.includes('>x &lt; y</textarea>'));
   const empty = renderCard(P('R04', '수정 중'), { editing: true });
   assert.ok(empty.includes('data-note="R04"'), '메모가 없어도 편집 모드에서는 textarea가 있어야 한다');
