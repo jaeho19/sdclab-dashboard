@@ -2740,6 +2740,8 @@ git commit -m "feat(papers): edit/add/delete dialog and optional PIN prompt"
 ---
 ### Task 10: 동기화 스크립트 `papers-sync.mjs` · 빌드 훅 · 스키마 · autosync
 
+> **실행 중 확정된 변경(2026-09-28, Task 10):** 이 PC에서는 `node --use-system-ca` + HTTPS `fetch` 뒤에 `process.exit()`를 부르면 Node 24.19가 libuv 단언(`src\win\async.c`)으로 죽는다(5/5 재현). 그래서 스크립트는 **`process.exit()`를 쓰지 않고 `process.exitCode`만 설정한 뒤 자연 종료**한다(pull 실패 시 exitCode 0/`--strict` 1, 검증 실패 1, 사용법 오류 2). 아래 코드 블록의 `process.exit(...)`는 원안이며 실제 코드가 정본이다.
+
 **Files:**
 - Create: `scripts/papers-sync.mjs`
 - Modify: `package.json` (`prebuild`, `prebuild:pages`)
