@@ -19,7 +19,7 @@
 - `src/lib/papers/*.ts`는 Node 24 type stripping으로 실행되므로 **지울 수 있는 TS 문법만**: `enum`·`namespace`·parameter property·`import x = require` 금지, 타입만 가져올 때 `import type`, 상대 import에 **`.ts` 확장자 명시**(`./model.ts`). Astro/Vite도 이 형태를 그대로 해석한다(`allowImportingTsExtensions: true`).
 - 상태 짝은 항상 표에서만 온다: 투고 완료=Submitted · 심사 중=Under Review · 수정 중=Under Revision · 재투고=Resubmitted · 거절=Rejected · 게재확정=Accepted · 게재=Published. 칸반 열 = 앞 5개, 아카이브 = 뒤 2개.
 - 인증 없음(사용자 결정). `PAPERS_EDIT_PIN` 환경변수가 있을 때만 서버가 PIN을 요구한다. 지금은 설정하지 않는다.
-- 이 PC의 HTTPS 호출(Netlify CLI, Node fetch)은 TLS 가로채기 때문에 `NODE_OPTIONS=--use-system-ca`가 필요하다. PowerShell: `$env:NODE_OPTIONS='--use-system-ca'`. localhost 호출에는 불필요.
+- 이 PC의 HTTPS 호출(Netlify CLI, Node fetch)은 TLS 가로채기 때문에 `NODE_OPTIONS=--use-system-ca`가 필요하다. PowerShell: `$env:NODE_OPTIONS='--use-system-ca'`. localhost 호출에는 불필요. **단 `netlify dev`는 예외**: `NODE_OPTIONS=--use-system-ca`가 켜져 있으면 함수 워커(worker_threads)가 그 플래그를 거부해 모든 호출이 500이 난다(Task 4에서 확인). 로컬 개발은 항상 **`netlify dev --offline`**(환경변수 없이)로 실행한다 — offline이면 api.netlify.com을 부르지 않아 TLS 우회가 필요 없고, 함수·Blobs 샌드박스는 그대로 동작한다.
 - 배포 주소: Netlify `https://sdclab-dashboard-156.netlify.app` (site id `c113708b-1106-46eb-bb94-4503818fa0aa`), 미러 `https://jaeho19.github.io/sdclab-dashboard/`.
 - CSS는 기존 토큰(`--soft --line --muted --warn --danger --c-res --pill --info-bg …`)만 쓴다. 새 색 도입 금지. 메모는 회색 상자(주황 경고색 아님).
 - 브라우저 `alert/confirm/prompt` 사용 금지(삭제는 2단계 버튼, PIN은 `<dialog>`).
@@ -1176,7 +1176,7 @@ git commit -m "feat(papers): add framework-agnostic /api/papers handler with sna
 **Files:**
 - Create: `netlify/functions/papers.mts`
 - Modify: `netlify.toml` (`[functions]`, `[dev]` 추가)
-- Modify: `package.json` (의존성 `@netlify/blobs`, devDependency `@netlify/functions`, 스크립트 `dev:netlify`), `package-lock.json`
+- Modify: `package.json` (의존성 `@netlify/blobs`, devDependency `@netlify/functions`, 스크립트 `dev:netlify` = `netlify dev --offline`), `package-lock.json`
 
 **Interfaces:**
 - Consumes: `createPapersHandler`, `Store`, `WriteCond` (Task 3), `PapersDoc` (Task 1)
@@ -1201,7 +1201,8 @@ Expected: `package.json`에 두 항목 추가, 오류 없음. (이 PC에서 npm�
   directory = "netlify/functions"
   node_bundler = "esbuild"
 
-# 로컬: `netlify dev` = Astro dev(4321) 프록시 + 함수 + Blobs 샌드박스 → http://localhost:8888
+# 로컬: `netlify dev --offline` = Astro dev(4321) 프록시 + 함수 + Blobs 샌드박스 → http://localhost:8888
+# (offline이면 NODE_OPTIONS 불필요. NODE_OPTIONS=--use-system-ca를 켜면 함수 워커가 죽는다)
 [dev]
   command = "npm run dev"
   targetPort = 4321
@@ -1210,7 +1211,7 @@ Expected: `package.json`에 두 항목 추가, 오류 없음. (이 PC에서 npm�
   autoLaunch = false
 ```
 
-`package.json` scripts에 추가: `"dev:netlify": "netlify dev"`.
+`package.json` scripts에 추가: `"dev:netlify": "netlify dev --offline"`.
 
 - [ ] **Step 3: 함수 작성**
 
@@ -1263,12 +1264,13 @@ export default async (req: Request, _context: Context): Promise<Response> => {
   return handler(req);
 };
 
-export const config: Config = { path: '/api/papers', method: ['GET', 'POST', 'OPTIONS'] };
+// method 필터를 두지 않는다: 두면 PUT 등이 함수에 닿기 전에 정적 404로 빠져 handler의 405가 무의미해진다.
+export const config: Config = { path: '/api/papers' };
 ```
 
 - [ ] **Step 4: `netlify dev`로 왕복 확인**
 
-터미널 1(백그라운드): `$env:NODE_OPTIONS='--use-system-ca'; netlify dev` → `Server now ready on http://localhost:8888` 확인(첫 기동 30초 안팎).
+터미널 1(백그라운드): `netlify dev --offline` (NODE_OPTIONS 없이) → `Server now ready on http://localhost:8888` 확인(첫 기동 20~60초).
 터미널 2(Git Bash):
 
 ```bash
@@ -1284,7 +1286,7 @@ curl -s -i -X OPTIONS -H 'Origin: https://jaeho19.github.io' http://localhost:88
 curl -s -o /dev/null -w '%{http_code}\n' -X PUT http://localhost:8888/api/papers
 # 기대: 405
 ```
-샌드박스 데이터는 `.netlify/blobs/` 아래에 생기며 gitignore 대상(`.netlify`)이다. 확인 후 `netlify dev`는 계속 켜 두어도 되고 종료해도 된다(다음 Task에서 다시 쓴다).
+샌드박스 데이터는 `.netlify/blobs-serve/` 아래에 생기며 gitignore 대상(`.netlify`)이다. 확인 후 `netlify dev`는 계속 켜 두어도 되고 종료해도 된다(다음 Task에서 다시 쓴다).
 
 - [ ] **Step 5: 커밋**
 
@@ -1845,10 +1847,10 @@ void load();
   }
 ```
 
-- [ ] **Step 7: 확인 (netlify dev + 브라우저)**
+- [ ] **Step 7: 확인 (netlify dev --offline + 브라우저)**
 
 1. `npm run build` → 오류 없음. `grep -c 'papers-seed' dist/papers/index.html` → 1.
-2. `$env:NODE_OPTIONS='--use-system-ca'; netlify dev`(백그라운드) 후 Playwright MCP(`mcp__playwright__browser_navigate` 등)로 `http://localhost:8888/papers/` 열기:
+2. `netlify dev --offline`(백그라운드, NODE_OPTIONS 없이) 후 Playwright MCP(`mcp__playwright__browser_navigate` 등)로 `http://localhost:8888/papers/` 열기:
    - `#papers-updated` 텍스트가 `마지막 수정 … · 실시간`(Task 4에서 note를 써서 blob 상태) 또는 `실시간 · 아직 웹 편집 없음`.
    - `#edit-toggle`이 `disabled`가 아니다. `#papers-banner`는 hidden.
    - 필터 칩 `강성익` 클릭 → 심사 중 열 개수(`h4 .n`)가 0, 수정 중 열이 1, 아카이브 `— 0건`. `전체` 클릭 시 복귀.
@@ -2285,7 +2287,7 @@ document.addEventListener('keydown', (e) => {
   }
 ```
 
-- [ ] **Step 7: 확인 (netlify dev + Playwright MCP, http://localhost:8888/papers/)**
+- [ ] **Step 7: 확인 (netlify dev --offline + Playwright MCP, http://localhost:8888/papers/)**
 
 1. `npm run build`가 통과한다(타입 오류 없이 번들).
 2. `#edit-toggle` 클릭 → 버튼 글자 `편집 중`, `body.editing`, 카드에 `⋯` 버튼과 `draggable="true"`, `#new-paper` 표시. 새로고침 후에도 편집 모드 유지(localStorage).
@@ -2390,7 +2392,7 @@ document.addEventListener('focusout', (e) => {
   }
 ```
 
-- [ ] **Step 5: 확인 (netlify dev + Playwright MCP)**
+- [ ] **Step 5: 확인 (netlify dev --offline + Playwright MCP)**
 
 1. 편집 모드에서 모든 카드·아카이브 행에 `textarea.memo`가 있고, 내용이 있는 카드(R02·R07)는 내용이 채워져 있으며 높이가 내용에 맞는다.
 2. `R08` 카드의 textarea에 `심사 결과 10월 예정` 입력 → 1초 안에 토스트 `메모 저장됨`, 카드는 다시 그려지지 않아 포커스가 유지된다(`document.activeElement`가 그 textarea).
@@ -2714,7 +2716,7 @@ function askPin(): Promise<boolean> {
   }
 ```
 
-- [ ] **Step 5: 확인 (netlify dev + Playwright MCP)**
+- [ ] **Step 5: 확인 (netlify dev --offline + Playwright MCP)**
 
 1. `npm run build` 통과. `npm test` 통과(38).
 2. 편집 모드 → `새 논문 +` 클릭 → 대화상자. 제목만 넣고 저장 → `#pd-err`에 `주저자을(를) 입력하세요` 표시, 닫히지 않음. 제목 `테스트 논문`, 주저자 `테스트`, 저널 `Test Journal`, 등급 KCI, 상태 `심사 중`, 투고 연월 `2026-09` 입력 → 저장 → 심사 중 열 끝에 `R12` 카드, 필터 칩에 `테스트` 추가, 토스트 `저장됨`. 새로고침 후 유지.
@@ -2722,7 +2724,7 @@ function askPin(): Promise<boolean> {
 4. 투고 연월 `2026-13`은 `type=month`가 막거나, 막지 못하는 브라우저라면 `#pd-err`에 `YYYY-MM 형식` 오류.
 5. `R12` `수정…` → `삭제` 클릭 → 버튼이 `정말 삭제`로 바뀜, 4초 기다리면 원복. 다시 `삭제`→`정말 삭제` → 카드 삭제, 필터 칩 `테스트` 사라짐, `#act-count` 감소. 새로고침 후에도 없음.
 6. `취소`와 Esc로 대화상자가 닫힌다. 다른 카드의 `수정…`을 열면 그 카드 값이 채워져 있다.
-7. PIN 여지(선택 확인): `netlify dev`를 `$env:PAPERS_EDIT_PIN='1234'`로 재시작 → 카드 이동 시 PIN 대화상자 → `0000` 입력 → 저장 실패 토스트 후 다시 대화상자 → `1234` → 저장됨. 이후 이동은 묻지 않음. 확인 후 환경변수 없이 재시작.
+7. PIN 여지(선택 확인): `netlify dev --offline`을 `$env:PAPERS_EDIT_PIN='1234'`를 설정한 뒤 재시작 → 카드 이동 시 PIN 대화상자 → `0000` 입력 → 저장 실패 토스트 후 다시 대화상자 → `1234` → 저장됨. 이후 이동은 묻지 않음. 확인 후 환경변수 없이 재시작.
 
 - [ ] **Step 6: 커밋**
 
@@ -2885,7 +2887,7 @@ node scripts/papers-sync.mjs pull
 
 - [ ] **Step 4: 로컬 API로 확인**
 
-`netlify dev`가 켜진 상태(Task 4~9로 로컬 샌드박스에 편집 데이터가 있음)에서 Git Bash:
+`netlify dev --offline`이 켜진 상태(Task 4~9로 로컬 샌드박스에 편집 데이터가 있음)에서 Git Bash:
 
 ```bash
 node scripts/papers-sync.mjs pull --api http://localhost:8888/api/papers
@@ -2920,11 +2922,11 @@ git commit -m "feat(papers): add papers-sync CLI (pull/push/history/restore) and
 
 **Files:** 없음(발견된 결함만 해당 파일 수정 후 별도 커밋)
 
-**Interfaces:** Task 6~10의 결과를 `netlify dev`(http://localhost:8888)에서 Playwright MCP로 한 번에 점검한다. 각 항목은 실제로 실행하고 결과를 기록한다. 하나라도 실패하면 해당 Task의 코드를 고치고 `npm test`·이 목록을 다시 돈다.
+**Interfaces:** Task 6~10의 결과를 `netlify dev --offline`(http://localhost:8888)에서 Playwright MCP로 한 번에 점검한다. 각 항목은 실제로 실행하고 결과를 기록한다. 하나라도 실패하면 해당 Task의 코드를 고치고 `npm test`·이 목록을 다시 돈다.
 
 - [ ] **Step 1: 준비**
 
-`npm test` → 38 통과. `netlify dev` 기동. 로컬 샌드박스를 원본으로 맞춤: `node scripts/papers-sync.mjs push --api http://localhost:8888/api/papers`.
+`npm test` → 38 통과. `netlify dev --offline` 기동(NODE_OPTIONS 없이). 로컬 샌드박스를 원본으로 맞춤: `node scripts/papers-sync.mjs push --api http://localhost:8888/api/papers`.
 
 - [ ] **Step 2: 시나리오 실행**
 
@@ -2969,7 +2971,7 @@ $env:NODE_OPTIONS = '--use-system-ca'
 npm run build            # prebuild pull은 아직 함수가 없어 "API 접근 실패 … 그대로 둡니다" 경고 후 계속 → 정상
 netlify deploy --dir=dist --site c113708b-1106-46eb-bb94-4503818fa0aa
 ```
-Expected: 출력에 `Packaging Functions from netlify\functions directory: - papers.mts`(또는 유사) 와 `Website draft URL: https://<hash>--sdclab-dashboard-156.netlify.app`. 함수 패키징 줄이 없으면 `netlify.toml`의 `[functions] directory`를 다시 확인한다(설계 §15의 가정 검증 지점).
+Expected: 출력에 `Packaging Functions from netlify\functions directory: - papers.mts`(또는 유사) 와 `Website draft URL: https://<hash>--sdclab-dashboard-156.netlify.app`. 함수 패키징 줄이 없으면 `netlify.toml`의 `[functions] directory`를 다시 확인한다(설계 §15의 가정 검증 지점). 함수 번들 중 worker 관련 오류(`--use-system-ca` 거부 등)가 나면 환경변수 대신 CLI 프로세스에 플래그를 직접 준다: `Remove-Item Env:NODE_OPTIONS; node --use-system-ca "$env:APPDATA\npm\node_modules\netlify-cli\bin\run.js" deploy --dir=dist --site c113708b-1106-46eb-bb94-4503818fa0aa` (Task 4에서 `netlify dev`에 같은 우회가 통했다).
 
 - [ ] **Step 2: 스모크 스크립트 작성 + 초안에서 함수 확인 (읽기만)**
 
@@ -3166,7 +3168,7 @@ npm run deploy                           # (선택) GitHub Pages 미러 갱신
 
 - [ ] **Step 4: 메모리 갱신**
 
-`memory/netlify-deploy-tls-workaround.md` 본문을 아래 사실에 맞게 고친다: (1) netlify-cli는 이제 **전역 설치됨(27.1.1)** — `npx` 불필요, `netlify` 직접 실행; (2) TLS 우회 `NODE_OPTIONS=--use-system-ca`는 여전히 필요(`netlify deploy`, `netlify dev`, `node scripts/papers-sync.mjs`); (3) `netlify deploy --prod --dir=dist`가 `/api/papers` 함수를 함께 올린다; (4) 동작하는 순서:
+`memory/netlify-deploy-tls-workaround.md` 본문을 아래 사실에 맞게 고친다: (1) netlify-cli는 이제 **전역 설치됨(27.1.1)** — `npx` 불필요, `netlify` 직접 실행; (2) TLS 우회 `NODE_OPTIONS=--use-system-ca`는 `netlify deploy`·`node scripts/papers-sync.mjs`에 여전히 필요하지만, **`netlify dev`에는 켜면 안 된다**(함수 워커가 플래그를 거부해 500) — 로컬은 `netlify dev --offline`(환경변수 없이); (3) `netlify deploy --prod --dir=dist`가 `/api/papers` 함수를 함께 올린다; (4) 동작하는 순서:
 
 ```powershell
 $env:NODE_OPTIONS = '--use-system-ca'
@@ -3174,7 +3176,7 @@ npm run build                    # prebuild가 papers-sync pull 실행
 netlify deploy --prod --dir=dist --site c113708b-1106-46eb-bb94-4503818fa0aa
 npm run deploy
 ```
-`MEMORY.md`의 해당 줄 hook을 `netlify는 전역 설치됨, 배포·dev·sync 모두 --use-system-ca 필요, deploy가 함수도 올림` 으로 갱신.
+`MEMORY.md`의 해당 줄 hook을 `netlify는 전역 설치됨, deploy·sync는 --use-system-ca 필요, dev는 --offline(NODE_OPTIONS 금지), deploy가 함수도 올림` 으로 갱신.
 
 - [ ] **Step 5: 커밋**
 
