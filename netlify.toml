@@ -13,7 +13,7 @@
   directory = "netlify/functions"
   node_bundler = "esbuild"
 
-# 로컬: `netlify dev` = Astro dev(4321) 프록시 + 함수 + Blobs 샌드박스 → http://localhost:8888
+# 로컬: `netlify dev --offline` = Astro dev(4321) 프록시 + 함수 + Blobs 샌드박스 → http://localhost:8888 (offline이면 NODE_OPTIONS 불필요; NODE_OPTIONS=--use-system-ca를 켜면 함수 워커가 죽음)
 [dev]
   command = "npm run dev"
   targetPort = 4321

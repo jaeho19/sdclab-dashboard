@@ -44,4 +44,4 @@ export default async (req: Request, _context: Context): Promise<Response> => {
   return handler(req);
 };
 
-export const config: Config = { path: '/api/papers', method: ['GET', 'POST', 'OPTIONS'] };
+export const config: Config = { path: '/api/papers' };
