@@ -785,6 +785,110 @@ body {
   .toast.error {
     background: var(--danger);
   }
+  /* 드래그·메뉴·저장 중 (편집 모드) */
+  .pcard,
+  .reqrow {
+    position: relative;
+  }
+  body.editing .pcard[draggable='true'],
+  body.editing .reqrow[draggable='true'] {
+    cursor: grab;
+  }
+  .pcard.dragging,
+  .reqrow.dragging {
+    opacity: 0.4;
+  }
+  .drop-line {
+    height: 3px;
+    border-radius: 2px;
+    background: var(--c-res);
+    margin: 2px 0 8px;
+  }
+  #archive-box.drop-target .card {
+    outline: 2px dashed var(--c-res);
+    outline-offset: 2px;
+    background: var(--info-bg);
+  }
+  .saving {
+    opacity: 0.55;
+    pointer-events: none;
+    transition: opacity 0.15s;
+  }
+  .pmenu-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-weight: 800;
+    line-height: 1;
+    cursor: pointer;
+    display: none;
+  }
+  body.editing .pmenu-btn {
+    display: inline-grid;
+    place-items: center;
+  }
+  .pmenu-btn:hover {
+    background: var(--soft);
+    border-color: var(--line);
+  }
+  body.editing .pcard .t {
+    padding-right: 24px;
+  }
+  body.editing .reqrow {
+    padding-right: 30px;
+  }
+  .pmenu {
+    position: absolute;
+    top: 30px;
+    right: 6px;
+    z-index: 20;
+    min-width: 200px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink);
+    cursor: default;
+  }
+  .pmenu button,
+  .pmenu label {
+    text-align: left;
+    font: inherit;
+    background: none;
+    border: 0;
+    border-radius: 6px;
+    padding: 6px 8px;
+    cursor: pointer;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .pmenu button:hover {
+    background: var(--soft);
+  }
+  .pmenu select {
+    font: inherit;
+    font-size: 11.5px;
+    flex: 1;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 2px 4px;
+    background: var(--surface);
+  }
   /* 거절 카드 — 끝난 건이라 색을 빼고 회색으로 눌러 둔다. 배지·제목만 죽이고 저널·주저자
      글자색은 그대로 둬서 대비가 떨어지지 않게 한다. hover 하면 원래 색으로 돌아온다. */
   .pcard[data-status='거절'] {
