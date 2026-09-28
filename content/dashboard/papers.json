@@ -45,6 +45,17 @@
     "fund": "생애첫연구"
   },
   {
+    "id": "R08",
+    "kind": "실제",
+    "stu": "김정옥",
+    "t": "Toward Inclusive Urban Parks: Automating Accessibility Diagn…",
+    "tier": "SCIE",
+    "jr": "Sensors and Materials",
+    "st": "재투고",
+    "stEn": "Resubmitted",
+    "fund": "워케이션"
+  },
+  {
     "id": "R05",
     "kind": "실제",
     "stu": "우정헌",
@@ -77,17 +88,6 @@
     "stEn": "Under Revision",
     "fund": "신진연구",
     "note": "수정본 제출 마감 2026-09-17"
-  },
-  {
-    "id": "R08",
-    "kind": "실제",
-    "stu": "김정옥",
-    "t": "Toward Inclusive Urban Parks: Automating Accessibility Diagn…",
-    "tier": "SCIE",
-    "jr": "Sensors and Materials",
-    "st": "심사 중",
-    "stEn": "Under Review",
-    "fund": "워케이션"
   },
   {
     "id": "R09",
