@@ -1871,7 +1871,7 @@ git commit -m "feat(papers): live-load board from /api/papers with offline fallb
 
 **Interfaces:**
 - Consumes: `applyOp`, `groupOf`, `isArchived`, `KANBAN_STATUSES`, `Status` (Task 1), `dropIndex` (Task 6), Task 6의 `doc/live/editing/saving/els/render/adopt/showUpdated`
-- Produces(Task 8·9가 사용): `toast(msg, kind?)`, `setEditing(on)`, `type Op`, `commit(op, {busyId?, rerender?, quiet?}) → Promise<boolean>`, `post(op)`, `readPin()`, `askPin()`(임시: 항상 false — Task 9가 교체), `openMenu/closeMenu/act(kind, id)`, 상수 `LS_EDIT='papers.edit'`, `LS_PIN='papers.pin'`
+- Produces(Task 8·9가 사용): `toast(msg, kind?)`, `setEditing(on)`, `type Op`, `commit(op, {busyId?, rerender?, quiet?}) → Promise<boolean>`, `post(op)`, `readPin()`, `openMenu/closeMenu/act(kind, id)`, 상수 `LS_EDIT='papers.edit'`, `LS_PIN='papers.pin'`
 
 - [ ] **Step 1: import·상수 수정**
 
@@ -1967,21 +1967,12 @@ function readPin(): string | null {
   }
 }
 
-// PIN 입력 대화상자는 Task 9에서 구현한다. 그 전까지 401은 그대로 오류로 처리한다.
-async function askPin(): Promise<boolean> {
-  return false;
-}
-
 async function post(op: Op): Promise<ApiDoc> {
   const headers: Record<string, string> = { 'content-type': 'application/json' };
   const pin = readPin();
   if (pin) headers['x-papers-pin'] = pin;
   const r = await fetch(API, { method: 'POST', headers, body: JSON.stringify(op) });
   const body = (await r.json().catch(() => ({}))) as Partial<ApiDoc> & { error?: string };
-  if (r.status === 401) {
-    if (await askPin()) return post(op);
-    throw new Error(body.error || 'PIN이 필요합니다');
-  }
   if (!r.ok || !body.ok) throw new Error(body.error || `HTTP ${r.status}`);
   return body as ApiDoc;
 }
@@ -2426,7 +2417,7 @@ git commit -m "feat(papers): autosaving memo box on cards and archive rows"
 
 **Interfaces:**
 - Consumes: `STATUSES`(Task 1), `applyOp`(검증용, Task 1), `commit`·`toast`·`openMenu/act`(Task 7), `readPin/LS_PIN`(Task 7)
-- Produces: `openDialog(p | null)`, `askPin(): Promise<boolean>`(Task 7 임시 구현을 교체)
+- Produces: `openDialog(p | null)`, `askPin(): Promise<boolean>`, `post()`의 401 분기
 
 - [ ] **Step 1: 대화상자 마크업 추가**
 
@@ -2479,15 +2470,15 @@ git commit -m "feat(papers): autosaving memo box on cards and archive rows"
   </dialog>
 ```
 
-- [ ] **Step 2: Task 7의 임시 `askPin`을 삭제하고 대화상자 섹션 추가**
+- [ ] **Step 2: `post()`에 401 분기 추가 + 대화상자 섹션 추가**
 
-`papers-board.ts`에서 아래 두 줄짜리 임시 함수를 **삭제**:
+`papers-board.ts`의 `post()` 안, `if (!r.ok || !body.ok) throw …` 줄 **바로 위**에 추가:
 
 ```ts
-// PIN 입력 대화상자는 Task 9에서 구현한다. 그 전까지 401은 그대로 오류로 처리한다.
-async function askPin(): Promise<boolean> {
-  return false;
-}
+  if (r.status === 401) {
+    if (await askPin()) return post(op); // PIN을 받았으면 같은 요청을 다시 보낸다
+    throw new Error(body.error || 'PIN이 필요합니다');
+  }
 ```
 
 메모 섹션 뒤, `// ── 부팅 ──` 위에 추가:
