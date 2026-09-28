@@ -8,6 +8,9 @@ import type { Store, WriteCond } from '../../src/lib/papers/handler.ts';
 import type { PapersDoc } from '../../src/lib/papers/model.ts';
 import seed from '../../content/dashboard/papers.json';
 
+// @types/node 미설치 상태(설치하면 이 커밋 범위를 벗어나 package.json도 바뀜) → process만 최소 선언.
+declare const process: { env: Record<string, string | undefined> };
+
 const STATE_KEY = 'state';
 const snapKey = (rev: number) => `snap/${String(rev).padStart(6, '0')}`;
 
@@ -16,7 +19,9 @@ function blobStore(): Store {
   return {
     async read() {
       const r = await store.getWithMetadata(STATE_KEY, { type: 'json' });
-      return r ? { doc: r.data as PapersDoc, etag: r.etag } : null;
+      if (!r) return null;
+      if (!r.etag) throw new Error('Blobs 응답에 etag가 없습니다 — 조건부 쓰기를 보장할 수 없음');
+      return { doc: r.data as PapersDoc, etag: r.etag };
     },
     async write(doc: PapersDoc, cond: WriteCond) {
       const r = await store.setJSON(STATE_KEY, doc, 'ifMatch' in cond ? { onlyIfMatch: cond.ifMatch } : { onlyIfNew: true });
@@ -44,4 +49,5 @@ export default async (req: Request, _context: Context): Promise<Response> => {
   return handler(req);
 };
 
+// method 필터를 두지 않는다: 두면 PUT 등이 함수에 닿기 전에 정적 404로 빠져 handler의 405가 무의미해진다.
 export const config: Config = { path: '/api/papers' };
