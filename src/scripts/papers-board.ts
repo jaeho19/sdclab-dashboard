@@ -6,7 +6,7 @@ import type { Paper, PapersDoc, Status } from '../lib/papers/model.ts';
 import { applyOp, groupOf, isArchived, KANBAN_STATUSES } from '../lib/papers/model.ts';
 import { renderArchive, renderChips, renderKanban, renderKpis, summary } from '../lib/papers/view.ts';
 import type { FilterState } from '../lib/papers/view.ts';
-import { apiUrlFor, dropIndex, fmtUpdated } from '../lib/papers/client.ts';
+import { apiUrlFor, debounce, dropIndex, fmtUpdated } from '../lib/papers/client.ts';
 
 type ApiDoc = { ok: true; source: 'blob' | 'seed'; rev: number; updatedAt: string; papers: Paper[] };
 
@@ -59,6 +59,7 @@ function render(): void {
   if (els.actCount) els.actCount.textContent = String(s.act);
   if (els.archTotal) els.archTotal.textContent = String(s.arch);
   applyFilter();
+  autosizeAll();
 }
 
 // 기존 인라인 필터(spec §4.4) 이관 — 보이기/숨기기만 하고 다시 그리지 않는다.
@@ -415,6 +416,40 @@ document.addEventListener('click', (e) => {
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closeMenu();
+});
+
+// ── 메모 자동 저장: 입력 멈춤 0.8초 후 또는 포커스가 떠날 때 ─────────────
+// note 응답으로는 다시 그리지 않는다(rerender:false) — 입력 중인 textarea의 포커스·내용을 지키기 위해.
+function autosize(ta: HTMLTextAreaElement): void {
+  ta.style.height = 'auto';
+  ta.style.height = `${ta.scrollHeight}px`;
+}
+function autosizeAll(): void {
+  document.querySelectorAll<HTMLTextAreaElement>('textarea.memo').forEach(autosize);
+}
+
+function commitNote(id: string, value: string): void {
+  const p = doc.papers.find((x) => x.id === id);
+  if (!p) return;
+  if ((p.note ?? '').trim() === value.trim()) return; // 변화 없음
+  void commit({ op: 'note', id, note: value }, { rerender: false, quiet: true }).then((ok) => {
+    if (ok) toast('메모 저장됨');
+  });
+}
+const saveNoteLater = debounce((id: string, value: string) => commitNote(id, value), 800);
+
+document.addEventListener('input', (e) => {
+  const ta = e.target as HTMLTextAreaElement;
+  if (!ta.matches?.('textarea.memo')) return;
+  autosize(ta);
+  saveNoteLater(ta.dataset.note ?? '', ta.value);
+});
+// 포커스가 떠나면 즉시 저장(다른 메모로 옮겨 갈 때 앞 메모가 유실되지 않게 타이머를 취소하고 바로 보냄)
+document.addEventListener('focusout', (e) => {
+  const ta = e.target as HTMLTextAreaElement;
+  if (!ta.matches?.('textarea.memo')) return;
+  saveNoteLater.cancel();
+  commitNote(ta.dataset.note ?? '', ta.value);
 });
 
 // ── 부팅 ─────────────────────────────────────────────

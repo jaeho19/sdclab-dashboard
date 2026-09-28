@@ -724,6 +724,23 @@ body {
     flex-basis: 100%;
     margin-top: 2px;
   }
+  textarea.memo {
+    resize: none;
+    overflow: hidden;
+    min-height: 28px;
+    border-color: var(--line);
+    background: var(--surface);
+    cursor: text;
+  }
+  textarea.memo::placeholder {
+    color: var(--muted);
+    opacity: 0.8;
+  }
+  textarea.memo:focus {
+    outline: none;
+    border-color: var(--c-res);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-res) 20%, transparent);
+  }
   /* ── 웹 편집 UI (papers) ── */
   .edit-switch,
   .btn-new {
