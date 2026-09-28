@@ -1173,6 +1173,8 @@ git commit -m "feat(papers): add framework-agnostic /api/papers handler with sna
 ---
 ### Task 4: Netlify 함수 + 설정 + 로컬 왕복 확인
 
+> **실행 중 확정된 변경(2026-09-28, Task 4 수정 라운드):** ① 로컬 Blobs 샌드박스는 GET에 ETag를 주지 않아 `getWithMetadata().etag`가 `undefined`다. 그래서 `handler.ts`의 `Store.read()`는 `etag: string | null`을 돌려주고, `WriteCond`에 `{ unconditional: true }`를 추가해 etag가 없을 때는 조건 없이 쓴다(프로덕션 Blobs는 항상 etag를 줌 → 조건부 쓰기 유지). `handler.test.ts`에 이 경우의 테스트 1개가 추가돼 총 35개다(이후 Task의 기대치 38 → **39**). ② 함수의 PIN 읽기는 `process.env` 대신 타입이 제공되는 `Netlify.env.get('PAPERS_EDIT_PIN')`. ③ `config`에 `method` 필터를 두지 않는다(두면 405가 정적 404로 바뀜). 아래 코드 블록은 원안이며, 실제 코드는 커밋 `a6326fd` 이후 상태가 정본이다.
+
 **Files:**
 - Create: `netlify/functions/papers.mts`
 - Modify: `netlify.toml` (`[functions]`, `[dev]` 추가)
@@ -1565,7 +1567,7 @@ export function debounce<A extends unknown[]>(fn: (...args: A) => void, ms: numb
 }
 ```
 
-Run: `npm test` → Expected `pass 38`, `fail 0`.
+Run: `npm test` → Expected `pass 39`, `fail 0` (Task 4에서 handler 테스트 1개 추가됨).
 
 - [ ] **Step 4: 페이지 껍데기 요소 추가·인라인 스크립트 제거**
 
@@ -2718,7 +2720,7 @@ function askPin(): Promise<boolean> {
 
 - [ ] **Step 5: 확인 (netlify dev --offline + Playwright MCP)**
 
-1. `npm run build` 통과. `npm test` 통과(38).
+1. `npm run build` 통과. `npm test` 통과(39).
 2. 편집 모드 → `새 논문 +` 클릭 → 대화상자. 제목만 넣고 저장 → `#pd-err`에 `주저자을(를) 입력하세요` 표시, 닫히지 않음. 제목 `테스트 논문`, 주저자 `테스트`, 저널 `Test Journal`, 등급 KCI, 상태 `심사 중`, 투고 연월 `2026-09` 입력 → 저장 → 심사 중 열 끝에 `R12` 카드, 필터 칩에 `테스트` 추가, 토스트 `저장됨`. 새로고침 후 유지.
 3. `R12` `⋯` → `수정…` → 제목 뒤에 ` (수정)` 추가, 사사 `워케이션`, 상태 `재투고` → 저장 → 재투고 열 끝으로 이동, 사사 칩 표시.
 4. 투고 연월 `2026-13`은 `type=month`가 막거나, 막지 못하는 브라우저라면 `#pd-err`에 `YYYY-MM 형식` 오류.
@@ -2926,7 +2928,7 @@ git commit -m "feat(papers): add papers-sync CLI (pull/push/history/restore) and
 
 - [ ] **Step 1: 준비**
 
-`npm test` → 38 통과. `netlify dev --offline` 기동(NODE_OPTIONS 없이). 로컬 샌드박스를 원본으로 맞춤: `node scripts/papers-sync.mjs push --api http://localhost:8888/api/papers`.
+`npm test` → 39 통과. `netlify dev --offline` 기동(NODE_OPTIONS 없이). 로컬 샌드박스를 원본으로 맞춤: `node scripts/papers-sync.mjs push --api http://localhost:8888/api/papers`.
 
 - [ ] **Step 2: 시나리오 실행**
 
@@ -3191,7 +3193,7 @@ git commit -m "docs: papers are edited on the web; papers.json is seed/backup wi
 
 - [ ] **Step 1: 최종 확인**
 
-`npm test`(38 통과), `npm run build`(prebuild pull 포함, 오류 없음), `git status`가 깨끗한지(기존 `package-lock.json` 변경은 Task 4 커밋에 포함됐어야 함), `git log --oneline main..HEAD`로 커밋 목록 확인.
+`npm test`(39 통과), `npm run build`(prebuild pull 포함, 오류 없음), `git status`가 깨끗한지(기존 `package-lock.json` 변경은 Task 4 커밋에 포함됐어야 함), `git log --oneline main..HEAD`로 커밋 목록 확인.
 
 - [ ] **Step 2: superpowers:finishing-a-development-branch 스킬 호출**
 

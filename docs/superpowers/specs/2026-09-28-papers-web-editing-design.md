@@ -137,7 +137,7 @@ createPapersHandler({ store, seed, now, pin?, allowedOrigins }): (req: Request) 
 - `GET` → `{ ok, source: 'blob'|'seed', rev, updatedAt, papers }`. `?history=1` → 스냅샷 rev 목록, `?snap=<rev>` → 그 문서.
   `Cache-Control: no-store`.
 - `POST` → JSON 본문 op. 흐름: `read` → 없으면 씨앗으로 `rev 0` 문서 구성 → `applyOp` → 직전 문서를 `writeSnapshot`
-  → `write`(있었으면 `ifMatch: etag`, 없었으면 `ifNew`) → 조건 불일치 시 다시 읽어 최대 3회 재시도 → 실패 시 409.
+  → `write`(있었으면 `ifMatch: etag`, 없었으면 `ifNew`; 저장소가 etag를 주지 않으면 — 로컬 Blobs 샌드박스는 GET에 ETag를 주지 않는다 — `unconditional`로 조건 없이 씀. 프로덕션 Blobs는 항상 etag를 준다) → 조건 불일치 시 다시 읽어 최대 3회 재시도 → 실패 시 409.
   성공 응답은 GET과 같은 형태(전체 최신 문서). 스냅샷 정리는 성공한 쓰기 뒤 `rev % 10 === 0`일 때만 수행.
 - `OPTIONS` → CORS 프리플라이트. 허용 origin: `https://sdclab-dashboard-156.netlify.app`, `https://jaeho19.github.io`,
   `http://localhost:4321`, `http://localhost:8888`. 허용 헤더: `content-type, x-papers-pin`.
@@ -150,7 +150,7 @@ createPapersHandler({ store, seed, now, pin?, allowedOrigins }): (req: Request) 
 - `@netlify/blobs`의 `getStore({ name: 'papers', consistency: 'strong' })`를 `Store` 인터페이스에 맞춘 어댑터로 감싼다.
   강한 일관성을 쓰는 이유: 저장 직후 새로고침해도 방금 바꾼 상태가 보여야 한다(기본 최종 일관성은 최대 60초 지연).
 - 씨앗은 `content/dashboard/papers.json`을 함수에서 import(번들 시 포함). 첫 쓰기 전까지 GET은 이 씨앗을 돌려준다.
-- 환경변수: `PAPERS_EDIT_PIN`(선택).
+- 환경변수: `PAPERS_EDIT_PIN`(선택). 함수에서는 `Netlify.env.get('PAPERS_EDIT_PIN')`로 읽는다(`@netlify/functions`가 `Netlify` 전역을 타입과 함께 제공, `@types/node` 불필요).
 
 ## 8. 클라이언트 `src/scripts/papers-board.ts`
 
