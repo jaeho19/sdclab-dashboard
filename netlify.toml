@@ -7,3 +7,16 @@
 [build.environment]
   NODE_VERSION = "22"
   # Netlify는 루트(base="/")로 빌드. astro.config.mjs가 GITHUB_ACTIONS가 아닐 때 자동으로 base="/" 사용.
+
+# 웹 편집 API (netlify/functions/papers.mts → /api/papers). `netlify deploy`가 dist와 함께 번들·업로드한다.
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# 로컬: `netlify dev` = Astro dev(4321) 프록시 + 함수 + Blobs 샌드박스 → http://localhost:8888
+[dev]
+  command = "npm run dev"
+  targetPort = 4321
+  port = 8888
+  framework = "#custom"
+  autoLaunch = false
