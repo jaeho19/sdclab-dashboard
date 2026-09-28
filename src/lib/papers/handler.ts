@@ -3,11 +3,11 @@
 import type { PapersDoc } from './model.ts';
 import { applyOp, seedDoc, validatePapers } from './model.ts';
 
-export type WriteCond = { ifMatch: string } | { ifNew: true };
+export type WriteCond = { ifMatch: string } | { ifNew: true } | { unconditional: true };
 
 export interface Store {
-  read(): Promise<{ doc: PapersDoc; etag: string } | null>;
-  /** 조건이 맞지 않으면 false(아무것도 쓰지 않음). */
+  read(): Promise<{ doc: PapersDoc; etag: string | null } | null>;
+  /** 조건이 맞지 않으면 false(아무것도 쓰지 않음). unconditional은 etag를 주지 않는 저장소(로컬 샌드박스)용. */
   write(doc: PapersDoc, cond: WriteCond): Promise<boolean>;
   writeSnapshot(rev: number, doc: PapersDoc): Promise<void>;
   /** 오름차순 rev 목록 */
@@ -108,7 +108,9 @@ export function createPapersHandler(o: HandlerOptions): (req: Request) => Promis
         const res = applyOp(base, body, now());
         if (!res.ok) return json(req, res.status, { ok: false, error: res.error });
         await o.store.writeSnapshot(base.rev, base);
-        const written = await o.store.write(res.doc, cur ? { ifMatch: cur.etag } : { ifNew: true });
+        // etag가 없으면(로컬 Blobs 샌드박스는 GET에 ETag를 주지 않음) 조건 없이 쓴다. 프로덕션 Blobs는 항상 etag를 준다.
+        const cond: WriteCond = cur ? (cur.etag ? { ifMatch: cur.etag } : { unconditional: true }) : { ifNew: true };
+        const written = await o.store.write(res.doc, cond);
         if (written) {
           if (res.doc.rev % 10 === 0) await prune();
           return json(req, 200, docBody(res.doc, 'blob'));

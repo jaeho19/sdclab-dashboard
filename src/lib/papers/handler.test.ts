@@ -5,7 +5,7 @@ import type { Store, WriteCond } from './handler.ts';
 import { createPapersHandler } from './handler.ts';
 
 class MemStore implements Store {
-  state: { doc: PapersDoc; etag: string } | null = null;
+  state: { doc: PapersDoc; etag: string | null } | null = null;
   snaps = new Map<number, PapersDoc>();
   n = 0;
   failWrites = 0; // 앞으로 n번의 write를 조건 불일치로 실패시킨다
@@ -13,7 +13,8 @@ class MemStore implements Store {
   async write(doc: PapersDoc, cond: WriteCond) {
     if (this.failWrites > 0) { this.failWrites -= 1; return false; }
     if ('ifNew' in cond) { if (this.state) return false; }
-    else if (!this.state || this.state.etag !== cond.ifMatch) return false;
+    else if ('ifMatch' in cond) { if (!this.state || this.state.etag !== cond.ifMatch) return false; }
+    // 'unconditional' → 검사 없음
     this.state = { doc: structuredClone(doc), etag: `"e${++this.n}"` };
     return true;
   }
@@ -87,6 +88,19 @@ test('POST: 조건부 쓰기 충돌은 재시도, 3회 모두 실패하면 409',
   store.failWrites = 3;
   const conflict = await post(handler, { op: 'note', id: 'R01', note: 'c' });
   assert.equal(conflict.status, 409);
+  assert.equal(store.state?.doc.rev, 2);
+});
+
+test('etag를 주지 않는 저장소(로컬 샌드박스)에서는 조건 없이 써서 성공한다', async () => {
+  const store = new MemStore();
+  const conds: WriteCond[] = [];
+  store.read = async () => (store.state ? { doc: structuredClone(store.state.doc), etag: null } : null);
+  const origWrite = store.write.bind(store);
+  store.write = async (doc, cond) => { conds.push(cond); return origWrite(doc, cond); };
+  const handler = createPapersHandler({ store, seed: SEED, now: () => NOW });
+  assert.equal((await post(handler, { op: 'note', id: 'R01', note: 'a' })).status, 200); // 첫 쓰기: ifNew
+  assert.equal((await post(handler, { op: 'note', id: 'R01', note: 'b' })).status, 200); // etag 없음 → unconditional
+  assert.deepEqual(conds, [{ ifNew: true }, { unconditional: true }]);
   assert.equal(store.state?.doc.rev, 2);
 });
 
