@@ -7,7 +7,7 @@ import Card from '../components/dashboard/Card.astro';
 import ConfRadar from '../components/dashboard/ConfRadar.astro';
 import papersData from '../../content/dashboard/papers.json';
 import conferencesData from '../../content/dashboard/conferences.json';
-import { validatePapers } from '../lib/papers/model.ts';
+import { STATUSES, validatePapers } from '../lib/papers/model.ts';
 import { renderArchive, renderChips, renderKanban, renderKpis, summary } from '../lib/papers/view.ts';
 
 // /papers shows real papers only (kind === "실제"); planned rows live under the roadmap tab.
@@ -65,6 +65,50 @@ const { act: actCount, arch: archCount } = summary(papers);
     <ConfRadar conferences={conferencesData} />
   </div>
 
+  <dialog id="paper-dialog" class="pdlg" aria-labelledby="pd-title">
+    <form id="paper-form" method="dialog" novalidate>
+      <h3 id="pd-title">논문 수정</h3>
+      <label>제목 <input name="t" maxlength="300" autocomplete="off" /></label>
+      <div class="row">
+        <label>주저자 <input name="stu" maxlength="40" autocomplete="off" /></label>
+        <label>등급
+          <select name="tier">
+            <option value="SCIE">SCIE</option><option value="SSCI">SSCI</option><option value="KCI">KCI</option><option value="und">미정</option>
+          </select>
+        </label>
+      </div>
+      <label>저널 <input name="jr" maxlength="120" autocomplete="off" /></label>
+      <div class="row">
+        <label>사사 <input name="fund" maxlength="40" placeholder="예: 신진연구 (비우면 '기입 필요')" autocomplete="off" /></label>
+        <label>상태
+          <select name="st">{STATUSES.map((s) => <option value={s}>{s}</option>)}</select>
+        </label>
+      </div>
+      <div class="row">
+        <label>투고 연월 <input name="sub" type="month" /></label>
+        <label>게재 연월 <input name="pub" type="month" /></label>
+      </div>
+      <p id="pd-err" class="pd-err" role="alert" hidden></p>
+      <div class="pd-actions">
+        <button type="button" id="pd-delete" class="danger" hidden>삭제</button>
+        <span class="spacer"></span>
+        <button type="button" id="pd-cancel">취소</button>
+        <button type="submit" class="primary">저장</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="pin-dialog" class="pdlg" aria-labelledby="pin-title">
+    <form method="dialog">
+      <h3 id="pin-title">편집 PIN</h3>
+      <p class="hint">이 사이트는 편집 PIN이 설정되어 있습니다. 한 번 입력하면 이 브라우저에 기억됩니다.</p>
+      <label>PIN <input name="pin" type="password" autocomplete="off" /></label>
+      <div class="pd-actions">
+        <span class="spacer"></span>
+        <button type="button" id="pin-cancel">취소</button>
+        <button type="submit" class="primary">확인</button>
+      </div>
+    </form>
+  </dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script is:inline type="application/json" id="papers-seed" set:html={JSON.stringify(papers).replace(/</g, '\\u003c')} />
 </Base>

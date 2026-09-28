@@ -906,6 +906,105 @@ body {
     padding: 2px 4px;
     background: var(--surface);
   }
+  /* 대화상자 (수정·새 논문·PIN) */
+  .pdlg {
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 0;
+    width: min(560px, calc(100vw - 32px));
+    box-shadow: var(--shadow);
+    color: var(--ink);
+  }
+  .pdlg::backdrop {
+    background: rgba(15, 23, 42, 0.35);
+  }
+  .pdlg form {
+    padding: 18px 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .pdlg h3 {
+    margin: 0 0 4px;
+    font-size: 15px;
+    font-weight: 800;
+  }
+  .pdlg label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--muted);
+    flex: 1;
+    min-width: 140px;
+  }
+  .pdlg input,
+  .pdlg select {
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 7px 9px;
+    background: var(--surface);
+  }
+  .pdlg input:focus,
+  .pdlg select:focus {
+    outline: none;
+    border-color: var(--c-res);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-res) 20%, transparent);
+  }
+  .pdlg .row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .pd-err {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--danger);
+  }
+  .pd-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .pd-actions .spacer {
+    flex: 1;
+  }
+  .pd-actions button {
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 700;
+    border-radius: 8px;
+    padding: 7px 14px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .pd-actions .primary {
+    background: var(--pill);
+    color: var(--pill-ink);
+    border-color: var(--pill);
+  }
+  .pd-actions .danger {
+    color: var(--danger);
+    border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+  }
+  .pd-actions .danger[data-armed='1'] {
+    background: var(--danger);
+    color: #fff;
+  }
+  .hint {
+    font-size: 12px;
+    color: var(--muted);
+    margin: 0;
+  }
   /* 거절 카드 — 끝난 건이라 색을 빼고 회색으로 눌러 둔다. 배지·제목만 죽이고 저널·주저자
      글자색은 그대로 둬서 대비가 떨어지지 않게 한다. hover 하면 원래 색으로 돌아온다. */
   .pcard[data-status='거절'] {

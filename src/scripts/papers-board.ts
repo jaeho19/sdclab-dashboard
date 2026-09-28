@@ -160,7 +160,7 @@ async function load(): Promise<void> {
 
 // 다른 탭·기기에서 바꾼 내용 반영: 탭이 다시 보일 때, 입력 중이 아니고 저장 중이 아닐 때만.
 async function refresh(): Promise<void> {
-  if (!live || saving > 0 || els.dialog?.open) return;
+  if (!live || saving > 0 || els.dialog?.open || els.pinDialog?.open) return;
   if (document.activeElement?.matches('textarea.memo, input, select')) return;
   try {
     const d = await fetchDoc();
@@ -232,6 +232,10 @@ async function post(op: Op): Promise<ApiDoc> {
   if (pin) headers['x-papers-pin'] = pin;
   const r = await fetch(API, { method: 'POST', headers, body: JSON.stringify(op) });
   const body = (await r.json().catch(() => ({}))) as Partial<ApiDoc> & { error?: string };
+  if (r.status === 401) {
+    if (await askPin()) return post(op); // PIN을 받았으면 같은 요청을 다시 보낸다
+    throw new Error(body.error || 'PIN이 필요합니다');
+  }
   if (!r.ok || !body.ok) throw new Error(body.error || `HTTP ${r.status}`);
   return body as ApiDoc;
 }
@@ -374,6 +378,7 @@ function openMenu(anchor: HTMLElement, id: string): void {
   m.className = 'pmenu';
   m.setAttribute('role', 'menu');
   m.innerHTML = `
+    <button type="button" role="menuitem" data-act="edit">수정…</button>
     <label class="pmenu-move">${archived ? '복원' : '이동'}
       <select data-act="move" aria-label="상태 선택"><option value="">상태 선택…</option>${options}</select>
     </label>
@@ -401,6 +406,10 @@ function act(kind: string, id: string): void {
   closeMenu();
   const p = doc.papers.find((x) => x.id === id);
   if (!p) return;
+  if (kind === 'edit') {
+    openDialog(p);
+    return;
+  }
   if (kind === 'archive') void commit({ op: 'move', id, st: '게재확정' }, { busyId: id });
   else if (kind === 'toggle-pub') void commit({ op: 'move', id, st: p.st === '게재확정' ? '게재' : '게재확정' }, { busyId: id });
 }
@@ -451,6 +460,112 @@ document.addEventListener('focusout', (e) => {
   saveNoteLater.cancel();
   commitNote(ta.dataset.note ?? '', ta.value);
 });
+
+// ── 수정 · 새 논문 · 삭제 대화상자 ───────────────────────
+let dialogId: string | null = null; // null = 새 논문
+const form = els.dialog?.querySelector<HTMLFormElement>('#paper-form') ?? null;
+const field = (name: string) => form?.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement | null;
+const pdErr = $('#pd-err');
+const pdDelete = $<HTMLButtonElement>('#pd-delete');
+
+function showErr(msg: string): void {
+  if (!pdErr) return;
+  pdErr.hidden = !msg;
+  pdErr.textContent = msg;
+}
+
+function openDialog(p: Paper | null): void {
+  if (!els.dialog || !form) return;
+  form.reset();
+  dialogId = p?.id ?? null;
+  const title = $('#pd-title');
+  if (title) title.textContent = p ? `논문 수정 · ${p.id}` : '새 논문';
+  if (pdDelete) {
+    pdDelete.hidden = !p;
+    pdDelete.textContent = '삭제';
+    pdDelete.dataset.armed = '';
+  }
+  const set = (name: string, v: string) => { const el = field(name); if (el) el.value = v; };
+  set('t', p?.t ?? '');
+  set('stu', p?.stu ?? '');
+  set('jr', p?.jr ?? '');
+  set('tier', p?.tier ?? 'und');
+  set('fund', p?.fund ?? '');
+  set('st', p?.st ?? '투고 완료');
+  set('sub', p?.sub ?? '');
+  set('pub', p?.pub ?? '');
+  showErr('');
+  els.dialog.showModal();
+  field('t')?.focus();
+}
+
+form?.addEventListener('submit', (e) => {
+  e.preventDefault();
+  if (!form || !els.dialog) return;
+  const fd = new FormData(form);
+  const s = (k: string) => String(fd.get(k) ?? '');
+  const fields = { t: s('t'), stu: s('stu'), jr: s('jr'), tier: s('tier'), fund: s('fund'), st: s('st'), sub: s('sub'), pub: s('pub') };
+  const op: Op = dialogId ? { op: 'update', id: dialogId, fields } : { op: 'add', paper: fields };
+  const check = applyOp(doc, op, new Date().toISOString()); // 서버와 같은 규칙으로 먼저 검증
+  if (!check.ok) {
+    showErr(check.error);
+    return;
+  }
+  els.dialog.close();
+  void commit(op, { busyId: dialogId ?? undefined });
+});
+$('#pd-cancel')?.addEventListener('click', () => els.dialog?.close());
+// 삭제는 2단계: 첫 클릭에 '정말 삭제'로 바뀌고 4초 안에 다시 누르면 삭제
+let disarmTimer = 0;
+pdDelete?.addEventListener('click', () => {
+  if (!pdDelete || !dialogId) return;
+  if (pdDelete.dataset.armed !== '1') {
+    pdDelete.dataset.armed = '1';
+    pdDelete.textContent = '정말 삭제';
+    clearTimeout(disarmTimer);
+    disarmTimer = window.setTimeout(() => {
+      pdDelete.dataset.armed = '';
+      pdDelete.textContent = '삭제';
+    }, 4000);
+    return;
+  }
+  const id = dialogId;
+  els.dialog?.close();
+  void commit({ op: 'delete', id });
+});
+els.newBtn?.addEventListener('click', () => openDialog(null));
+
+// ── PIN 여지: 서버가 401을 주면 묻고 localStorage에 기억 ─────────────
+function askPin(): Promise<boolean> {
+  return new Promise((resolve) => {
+    const d = els.pinDialog;
+    const f = d?.querySelector('form');
+    if (!d || !f) return resolve(false);
+    try {
+      localStorage.removeItem(LS_PIN); // 틀린 PIN이 남아 있으면 지운다
+    } catch {
+      /* 무시 */
+    }
+    f.reset();
+    const finish = (ok: boolean) => {
+      d.close();
+      resolve(ok);
+    };
+    f.onsubmit = (e) => {
+      e.preventDefault();
+      const v = String(new FormData(f).get('pin') ?? '').trim();
+      if (!v) return finish(false);
+      try {
+        localStorage.setItem(LS_PIN, v);
+      } catch {
+        /* 무시 */
+      }
+      finish(true);
+    };
+    d.querySelector<HTMLButtonElement>('#pin-cancel')?.addEventListener('click', () => finish(false), { once: true });
+    d.showModal();
+  });
+}
 
 // ── 부팅 ─────────────────────────────────────────────
 void load();
