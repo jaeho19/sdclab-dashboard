@@ -703,11 +703,26 @@ body {
     color: var(--muted);
     width: 100%;
   }
-  .pcard .warnline {
-    font-size: 10.5px;
-    color: var(--warn);
-    font-weight: 600;
-    margin-top: 5px;
+  /* 메모(웹 편집) — 주황 경고줄 대신 회색 상자. 열람 모드는 내용이 있을 때만 렌더된다. */
+  .memo {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 7px;
+    font: inherit;
+    font-size: 11px;
+    line-height: 1.45;
+    color: #3f4756;
+    background: var(--soft);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 6px 8px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .reqrow .memo {
+    flex-basis: 100%;
+    margin-top: 2px;
   }
   /* 거절 카드 — 끝난 건이라 색을 빼고 회색으로 눌러 둔다. 배지·제목만 죽이고 저널·주저자
      글자색은 그대로 둬서 대비가 떨어지지 않게 한다. hover 하면 원래 색으로 돌아온다. */
