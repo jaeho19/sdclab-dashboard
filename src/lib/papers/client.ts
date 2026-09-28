@@ -11,12 +11,14 @@ export function apiUrlFor(hostname: string, prod: string = PROD_API): string {
 /**
  * 드롭 위치 → move op의 index. members는 대상 그룹 구성원을 문서 순서대로(필터로 숨겨진 카드 포함).
  * 서버(model.placeInGroup)는 드래그 카드를 뺀 뒤 그룹 안 순번으로 삽입하므로 여기서도 드래그 카드를 빼고 센다.
- * nextId(놓는 자리 바로 다음에 보이는 카드)가 없으면 undefined → 그룹 끝.
+ * nextId(놓는 자리 바로 다음에 보이는 카드)가 없거나 못 찾으면 그룹 끝(= 남은 구성원 수)을 돌려준다.
+ * index는 항상 보낸다: index 없는 move는 '제자리 상태 변경'이라 같은 열 맨 아래로 끌었을 때 움직이지 않기 때문.
  */
-export function dropIndex(members: readonly { id: string }[], draggedId: string, nextId: string | null): number | undefined {
-  if (!nextId) return undefined;
-  const i = members.filter((m) => m.id !== draggedId).findIndex((m) => m.id === nextId);
-  return i < 0 ? undefined : i;
+export function dropIndex(members: readonly { id: string }[], draggedId: string, nextId: string | null): number {
+  const rest = members.filter((m) => m.id !== draggedId);
+  if (!nextId) return rest.length;
+  const i = rest.findIndex((m) => m.id === nextId);
+  return i < 0 ? rest.length : i;
 }
 
 /** ISO → 'YYYY-MM-DD HH:mm' (Asia/Seoul). 파싱 실패 시 ''. */

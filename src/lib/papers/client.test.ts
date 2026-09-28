@@ -10,13 +10,13 @@ test('apiUrlFor: localhost·netlify.app은 상대 경로, 그 외(미러)는 프
   assert.equal(apiUrlFor('jaeho19.github.io'), 'https://sdclab-dashboard-156.netlify.app/api/papers');
 });
 
-test('dropIndex: 다음 카드의 그룹 내 순번(드래그 카드 제외), 없으면 undefined', () => {
+test('dropIndex: 다음 카드의 그룹 내 순번(드래그 카드 제외), 없으면 그룹 끝', () => {
   const members = [{ id: 'A' }, { id: 'B' }, { id: 'C' }, { id: 'D' }];
   assert.equal(dropIndex(members, 'D', 'A'), 0);
   assert.equal(dropIndex(members, 'A', 'C'), 1, 'A를 빼면 [B,C,D]에서 C는 1');
-  assert.equal(dropIndex(members, 'B', 'B'), undefined, '자기 자신 앞은 위치 없음 → 끝');
-  assert.equal(dropIndex(members, 'A', null), undefined);
-  assert.equal(dropIndex(members, 'A', 'zz'), undefined);
+  assert.equal(dropIndex(members, 'A', null), 3, '다음 카드 없음 → 남은 3개 뒤 = 끝');
+  assert.equal(dropIndex(members, 'A', 'zz'), 3, '못 찾으면 끝');
+  assert.equal(dropIndex([{ id: 'A' }], 'A', null), 0, '혼자인 열 → 0');
 });
 
 test('fmtUpdated: KST YYYY-MM-DD HH:mm', () => {

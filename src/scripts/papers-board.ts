@@ -310,13 +310,11 @@ els.kanban?.addEventListener('drop', (e) => {
   const id = dragId;
   const st = col.dataset.stage as Status;
   const next = nextCardAt(col, e.clientY);
-  // index = 놓는 자리 다음 카드의 그룹 내 순번(숨겨진 카드 포함, 드래그 카드 제외) — 서버 placeInGroup과 같은 셈법
+  // index는 항상 보낸다(끝이면 그룹 구성원 수) — 같은 열 맨 아래로 끌었을 때도 이동하도록. 서버 placeInGroup과 같은 셈법.
   const members = doc.papers.filter((p) => groupOf(p.st) === groupOf(st));
   const index = dropIndex(members, id, next?.dataset.id ?? null);
   dropLine.remove();
-  const op: Op = { op: 'move', id, st };
-  if (index !== undefined) op.index = index;
-  void commit(op, { busyId: id });
+  void commit({ op: 'move', id, st, index }, { busyId: id });
 });
 
 // 아카이브 박스에 놓으면 게재확정(Accepted). 이미 아카이브된 행은 대상이 아니다.
