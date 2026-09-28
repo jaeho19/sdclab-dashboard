@@ -10,6 +10,7 @@
 //
 // 이 PC처럼 TLS 가로채기가 있는 환경에서는 `node --use-system-ca scripts/papers-sync.mjs …`로 실행한다
 // (package.json의 prebuild가 그렇게 호출한다). 프로덕션 정본은 서버이고 papers.json은 씨앗·백업이다.
+// process.exit()를 쓰지 않는다: 이 PC에서 --use-system-ca + HTTPS fetch 뒤 process.exit()는 libuv 단언 오류로 죽는다 → exitCode만 설정하고 자연 종료.
 import { readFile, writeFile } from 'node:fs/promises';
 import { validatePapers } from '../src/lib/papers/model.ts';
 
@@ -47,7 +48,8 @@ async function pull() {
     remote = await getJson(API);
   } catch (err) {
     console.warn(`[papers-sync] API 접근 실패 — papers.json을 그대로 둡니다: ${err.message}`);
-    process.exit(strict ? 1 : 0);
+    process.exitCode = strict ? 1 : 0;
+    return;
   }
   if (remote.source === 'seed') {
     console.log('[papers-sync] 서버에 웹 편집 데이터 없음(씨앗 상태) — 변경 없음');
@@ -56,7 +58,8 @@ async function pull() {
   const v = validatePapers(remote.papers);
   if (!v.ok) {
     console.error(`[papers-sync] 서버 데이터 검증 실패: ${v.error}`);
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
   const next = stringify(v.papers);
   const cur = await readFile(FILE, 'utf8').catch(() => '');
@@ -96,9 +99,10 @@ async function restore(rev) {
 const run = { pull, push, history, restore: () => restore(args[1]) }[cmd];
 if (!run) {
   console.error('사용법: node scripts/papers-sync.mjs <pull|push|history|restore REV> [--api URL] [--strict]');
-  process.exit(2);
+  process.exitCode = 2;
+} else {
+  run().catch((err) => {
+    console.error(`[papers-sync] ${err.message}`);
+    process.exitCode = 1;
+  });
 }
-run().catch((err) => {
-  console.error(`[papers-sync] ${err.message}`);
-  process.exit(1);
-});
