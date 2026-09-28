@@ -7,7 +7,7 @@ import Card from '../components/dashboard/Card.astro';
 import ConfRadar from '../components/dashboard/ConfRadar.astro';
 import papersData from '../../content/dashboard/papers.json';
 import conferencesData from '../../content/dashboard/conferences.json';
-import { STATUSES, validatePapers } from '../lib/papers/model.ts';
+import { ARCHIVE_STATUSES, KANBAN_STATUSES, validatePapers } from '../lib/papers/model.ts';
 import { renderArchive, renderChips, renderKanban, renderKpis, summary } from '../lib/papers/view.ts';
 
 // /papers shows real papers only (kind === "실제"); planned rows live under the roadmap tab.
@@ -81,7 +81,10 @@ const { act: actCount, arch: archCount } = summary(papers);
       <div class="row">
         <label>사사 <input name="fund" maxlength="40" placeholder="예: 신진연구 (비우면 '기입 필요')" autocomplete="off" /></label>
         <label>상태
-          <select name="st">{STATUSES.map((s) => <option value={s}>{s}</option>)}</select>
+          <select name="st">
+            <optgroup label="칸반">{KANBAN_STATUSES.map((s) => <option value={s}>{s}</option>)}</optgroup>
+            <optgroup label="아카이브 (게재 완료)">{ARCHIVE_STATUSES.map((s) => <option value={s}>{s}</option>)}</optgroup>
+          </select>
         </label>
       </div>
       <div class="row">

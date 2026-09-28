@@ -3,7 +3,7 @@
 //  4) 드래그 이동·카드 메뉴  5) 메모 자동 저장  6) 수정/새 논문 대화상자  7) 토스트·PIN 여지
 // 이벤트는 컨테이너에 위임한다 → 다시 그려도 재바인딩 불필요. 렌더 템플릿은 src/lib/papers/view.ts(빌드와 동일).
 import type { Paper, PapersDoc, Status } from '../lib/papers/model.ts';
-import { applyOp, groupOf, isArchived, KANBAN_STATUSES } from '../lib/papers/model.ts';
+import { applyOp, ARCHIVE_STATUSES, groupOf, isArchived, KANBAN_STATUSES } from '../lib/papers/model.ts';
 import { renderArchive, renderChips, renderKanban, renderKpis, summary, yearOf } from '../lib/papers/view.ts';
 import type { FilterState } from '../lib/papers/view.ts';
 import { apiUrlFor, debounce, dropIndex, fmtUpdated } from '../lib/papers/client.ts';
@@ -384,15 +384,18 @@ function openMenu(anchor: HTMLElement, id: string): void {
   const p = doc.papers.find((x) => x.id === id);
   if (!p) return;
   const archived = isArchived(p);
-  const options = KANBAN_STATUSES.filter((s) => s !== p.st)
-    .map((s) => `<option value="${s}">${s}</option>`)
-    .join('');
+  // 이동 목록에는 칸반 5개뿐 아니라 아카이브 상태(게재확정·게재)도 넣는다 — 메뉴에서 바로 게재 완료로 보낼 수 있게.
+  const opts = (list: readonly Status[]) =>
+    list.filter((s) => s !== p.st).map((s) => `<option value="${s}">${s}</option>`).join('');
+  const options =
+    `<optgroup label="칸반">${opts(KANBAN_STATUSES)}</optgroup>` +
+    `<optgroup label="아카이브 (게재 완료)">${opts(ARCHIVE_STATUSES)}</optgroup>`;
   const m = document.createElement('div');
   m.className = 'pmenu';
   m.setAttribute('role', 'menu');
   m.innerHTML = `
     <button type="button" role="menuitem" data-act="edit">수정…</button>
-    <label class="pmenu-move">${archived ? '복원' : '이동'}
+    <label class="pmenu-move">${archived ? '복원·전환' : '이동'}
       <select data-act="move" aria-label="상태 선택"><option value="">상태 선택…</option>${options}</select>
     </label>
     ${
