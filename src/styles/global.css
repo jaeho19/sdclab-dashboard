@@ -906,12 +906,14 @@ body {
     padding: 2px 4px;
     background: var(--surface);
   }
-  /* 대화상자 (수정·새 논문·PIN) */
+  /* 대화상자 (수정·새 논문·PIN) — 브라우저 기본 dialog UA 스타일이 max-width: calc(100% - 38px)를
+     함께 줘서 그대로 두면 width가 더 좁게 눌린다(390px 화면에서 358px 의도가 337px로 축소). 여기서 없앤다. */
   .pdlg {
     border: 1px solid var(--line);
     border-radius: 16px;
     padding: 0;
     width: min(560px, calc(100vw - 32px));
+    max-width: none;
     box-shadow: var(--shadow);
     color: var(--ink);
   }
