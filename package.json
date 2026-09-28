@@ -6,6 +6,8 @@
   "description": "SDC Lab 연구과제 종합 대시보드",
   "scripts": {
     "dev": "astro dev",
+    "prebuild": "node --use-system-ca scripts/papers-sync.mjs pull",
+    "prebuild:pages": "node --use-system-ca scripts/papers-sync.mjs pull",
     "build": "astro build",
     "build:pages": "cross-env DEPLOY_TARGET=pages astro build",
     "deploy": "npm run build:pages && gh-pages -d dist --nojekyll -b gh-pages -m \"deploy\"",

@@ -11,6 +11,10 @@ $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
 Set-Location $repo
 
+# 0) 웹에서 편집된 논문 데이터를 papers.json으로 내려받는다 (실패해도 계속 — 빌드의 prebuild가 한 번 더 시도)
+$env:NODE_OPTIONS = '--use-system-ca'
+node scripts/papers-sync.mjs pull
+
 # 변경 사항이 없으면 조용히 종료
 $changes = git status --porcelain
 if (-not $changes) { exit 0 }
