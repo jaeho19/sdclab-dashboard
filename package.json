@@ -9,7 +9,8 @@
     "build": "astro build",
     "build:pages": "cross-env DEPLOY_TARGET=pages astro build",
     "deploy": "npm run build:pages && gh-pages -d dist --nojekyll -b gh-pages -m \"deploy\"",
-    "preview": "astro preview"
+    "preview": "astro preview",
+    "test": "node --test \"src/lib/papers/*.test.ts\""
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.0",
